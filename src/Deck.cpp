@@ -140,3 +140,8 @@ void Deck::setStrongSuitAndValue(string strong_suit, string value) {
 		pos++;
 	}
 }
+
+
+int Deck::deleteDeck() {
+	return 0;
+}

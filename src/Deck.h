@@ -40,6 +40,9 @@ public:
 
 	int getDrawDeckSize() const;
 
+
+	int deleteDeck();
+
 private:
 	//Creates a blank standard deck
 	void createDeck(int number_of_decks, int rank_omit_count,bool leaveShengJiGap);

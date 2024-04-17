@@ -4,6 +4,9 @@
 #include "Play.h"
 #include "Deck.h"
 #include "SocketServer.h"
+#include "json.hpp"
+
+using json = nlohmann::json;
 
 
 void deckTesting();
@@ -11,9 +14,9 @@ int serverTesting();
 
 int main() {
 	
-	//serverTesting();
-	deckTesting();
-
+	serverTesting();
+	//deckTesting();
+	
 	
  	return 0;
 }
