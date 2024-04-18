@@ -60,7 +60,7 @@ int serverTesting() {
 	SocketServer s;
 
 	/* then call WSACleanup when done using the Winsock dll */
-
+	std::cout << "Exited SocketServer (printed in main)" << std::endl;
 	while (true) {
 
 	}

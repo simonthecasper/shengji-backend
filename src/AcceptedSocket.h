@@ -19,4 +19,6 @@ public:
 	AcceptedSocket(SOCKET socketFD, SOCKADDR_IN m_address, SOCKET m_error, bool accepted_successful);
 
 	SOCKET getSocketFD() const;
+
+	std::string toString() const;
 };

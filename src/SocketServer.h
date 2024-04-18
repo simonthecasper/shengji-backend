@@ -6,11 +6,12 @@
 #include <mutex>
 
 
-#define MAX_THREADS 3
+
+#define MAX_THREADS 2
 
 class SocketServer;
 
-enum ThreadRoleEnum { receive, work };
+enum ThreadRoleEnum { listen_new_connection, receive_data, work };
 
 struct ThreadRoleStruct {
 	SocketServer* server;
@@ -44,23 +45,33 @@ public:
 
 	void initServer();
 
+
+	void pollTest();
+
+
 	int initThreads();
 
-	AcceptedSocket* acceptIncomingConnection(int serverSocketFD);
+	void initFDSet();
 
 	struct sockaddr_in* createIPv4Address(std::string ip, int port);
 	
 	SOCKET createTCPIPv4Socket();
+	
+	AcceptedSocket* acceptIncomingConnection(SOCKET serverSocketFD);
+
+	void listenAndAcceptIncomingConnection(int serverSocketFD);
 
 	static DWORD WINAPI staticThreadFunction(void* param);
 
-	DWORD WINAPI threadFunction(void* param);
+	//DWORD WINAPI threadFunction(ThreadRoleEnum* param);
+	DWORD WINAPI threadFunction(ThreadRoleEnum* param);
 
 
 	int addToQueue(JSON task);
 
 	JSON takeFromQueue();
 
-
 	void check(int input, std::string instance);
+
+	void printIP();
 };
