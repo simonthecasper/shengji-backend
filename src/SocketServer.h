@@ -6,8 +6,10 @@
 #include <mutex>
 
 
-
 #define MAX_THREADS 2
+#define HEADER_SIZE 64
+
+#define CLIENT_CLOSED 2
 
 class SocketServer;
 
@@ -37,6 +39,9 @@ private:
 	FD_SET				m_current_sockets;
 	FD_SET				m_ready_sockets;
 
+	//Polling
+	struct pollfd		fds[200];
+
 	//Session handling
 	std::unordered_set<AcceptedSocket*> m_client_list;
 
@@ -63,9 +68,7 @@ public:
 
 	static DWORD WINAPI staticThreadFunction(void* param);
 
-	//DWORD WINAPI threadFunction(ThreadRoleEnum* param);
 	DWORD WINAPI threadFunction(ThreadRoleEnum* param);
-
 
 	int addToQueue(JSON task);
 
@@ -74,4 +77,10 @@ public:
 	void check(int input, std::string instance);
 
 	void printIP();
+
+
+	//Creates a socket for the server and configures it for Polling
+	void setupServerSocketFD();
+
+	std::string pfdReadExistingConnection(int fds_index);
 };
