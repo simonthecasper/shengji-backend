@@ -1,6 +1,7 @@
 #include "SocketServer.h"
 
-#define SERVER_PORT 2000
+
+#define SERVER_PORT 12345
 
 
 SocketServer::SocketServer() {
@@ -25,8 +26,10 @@ SocketServer::SocketServer() {
 void SocketServer::initServer() {
 	setupServerSocketFD();
 
+	
 	//m_serverAddress = createIPv4Address("", SERVER_PORT);
-	m_serverAddress = createIPv4Address("127.0.0.1", SERVER_PORT);
+	//m_serverAddress = createIPv4Address("127.0.0.1", SERVER_PORT);
+	m_serverAddress = createIPv4Address("192.168.0.77", SERVER_PORT);
 
 	int bind_result = bind(m_serverSocketFD, (struct sockaddr*)m_serverAddress, sizeof(*m_serverAddress));
 	std::cout << bind_result << "\n" << std::endl;
@@ -37,13 +40,17 @@ void SocketServer::initServer() {
 
 void SocketServer::pollTest() {
 	int    len, rc, on = 1;
+	//int	   header_rc = -1;
+	//int    message_rc = -1;
 	int    new_sd = -1;
 	int    desc_ready, end_server = FALSE, compress_array = FALSE;
 	int    close_conn;
-	char   header_buffer[64];
+	char   header_buffer[HEADER_SIZE];
 	int    timeout;
 	//struct pollfd fds[200];
-	int    nfds = 1, current_size = 0, i, j;
+	int    current_size = 0, current_fd, j;
+	nfds = 1;
+
 	AcceptedSocket* new_connection;
 
 	// Set the listen back log
@@ -58,7 +65,7 @@ void SocketServer::pollTest() {
 
 	fds[0].fd = m_serverSocketFD;
 	fds[0].events = POLLIN;
-	
+
 	timeout = -1;
 	//timeout = (3 * 60 * 1000);
 
@@ -66,12 +73,13 @@ void SocketServer::pollTest() {
 	do {
 		//printf("Waiting on poll()...\n");
 		poll_result = WSAPoll(fds, nfds, timeout);
-		
+
 		if (poll_result == SOCKET_ERROR) {
 			//Socket error case
 			perror("  poll() failed with SOCKET_ERROR");
 			break;
-		} else if (poll_result == 0) {
+		}
+		else if (poll_result == 0) {
 			//timeout case
 			printf("  poll() timed out.  End program.\n");
 			break;
@@ -80,29 +88,29 @@ void SocketServer::pollTest() {
 		// One or more descriptors are readable. Need to
 		// determine which ones they are.
 		current_size = nfds;
-		for (i = 0; i < current_size; i++) {
+		for (current_fd = 0; current_fd < current_size; current_fd++) {
 			close_conn = FALSE;
 
-			if (fds[i].revents == 0)
+			if (fds[current_fd].revents == 0)
 				continue;
 
-			if (fds[i].revents == CLIENT_CLOSED) {
-				printf(">>Index %d Connection closed by revents\n", i);
+			if (fds[current_fd].revents == CLIENT_CLOSED) {
+				printf(">>Index %d Connection closed by revents\n", current_fd);
 				close_conn = TRUE;
 				break;
 			}
 
 			// If revents is not "Read ready", it's an unexpected result
 			// log and end the server.
-			if ((fds[i].revents & POLLIN) == 0) {
+			if ((fds[current_fd].revents & POLLIN) == 0) {
 				printf(">>revents is not a \"Read available\" value\n");
-				printf(">>revents = %d\n\n", fds[i].revents);
+				printf(">>revents = %d\n\n", fds[current_fd].revents);
 				end_server = TRUE;
 				break;
 			}
 
 			//ServerSocketFD is readable. A new connection is available to be made.
-			if (fds[i].fd == m_serverSocketFD) {
+			if (fds[current_fd].fd == m_serverSocketFD) {
 				printf(">>Server socket is readable. New connection pending...\n");
 
 				do {
@@ -119,90 +127,117 @@ void SocketServer::pollTest() {
 					}
 				} while (new_connection != NULL);
 			}
-			
+
 			/* This is not the listening socket, therefore an        */
 			/* existing connection must be readable                  */
 			else {
-				//std::cout << "  Descriptor " << fds[i].fd << " is readable\n" << std::endl;
-
 				do {
-					//receive header
-					memset(&header_buffer, 0, sizeof(header_buffer));
-					rc = recv(fds[i].fd, header_buffer, sizeof(header_buffer), 0);
-					
-					if (rc < 0) {
-						//printf("No more data to be read.\n\n");
+					if (fd_read_state[current_fd] == awaiting_header) {
+						//Recieve Header Case
+						printf("Receiving Header:\n");
+
+						memset(&header_buffer, 0, sizeof(header_buffer));
+						int header_rc = recv(fds[current_fd].fd, header_buffer, sizeof(header_buffer), 0);
+
+						if (header_rc < 0)  //No more data to read
+							break;
+
+						if (header_rc == 0) {
+							printf("  Connection closed in \"reading existing connection\"\n");
+							close_conn = TRUE;
+							break;
+						}
+
+						//printf("header_rc:%d\n", header_rc);
+
+						// Header is expected
+						if (header_rc != HEADER_SIZE) {
+							printf(">>ERROR:Message header was expected but was not received\n");
+							break;
+						}
+						else
+							header_buffer[header_rc - 1] = 0;
+
+						len = header_rc;
+						printf(">>ClientFD:%d\n", (int)fds[current_fd].fd);
+						printf("Header:%s\n", header_buffer);
+						printf("header_rc:%d\n", header_rc);
+
+						std::string header_string(header_buffer);
+						header_string.erase(remove_if(header_string.begin(), header_string.end(), isspace));
+						int message_size = stoi(header_string);
+						fd_message_size[current_fd] = message_size;
+						fd_read_state[current_fd] = awaiting_message;
+					} //End receive header case
+
+					else if (fd_read_state[current_fd] == awaiting_message) {
+						//Receive Message Case
+						printf("Receiving Message:\n");
+
+						if (fd_message_size[current_fd] < 1) {
+							printf(">>ERROR:Expected message size is not a valid value\n");
+							fd_read_state[current_fd] = awaiting_header;
+							fd_message_size[current_fd] = -1;
+							break;
+						}
+
+						int message_size = fd_message_size[current_fd];
+						char* message_buffer = new char[message_size];
+
+						//receive message
+						int message_rc = recv(fds[current_fd].fd, message_buffer, message_size, 0);
+
+						if (message_rc < 0) {
+							printf(">>ERROR:Nothing was available to read\n");
+							fd_read_state[current_fd] = awaiting_header;
+							fd_message_size[current_fd] = -1;
+							break;
+						}
+
+						printf("message_rc:%d\n", message_rc);
+						message_buffer[message_size] = 0;
+
+						std::string message_string(message_buffer);
+
+						fd_read_state[current_fd] = awaiting_header;
+						fd_message_size[current_fd] = -1;  //set to a default value
+
+						std::cout << "Message:" << message_string << "\n" << std::endl;
+					} //End receive message case
+
+					else {
+						printf(">>ERROR:fd_read_state[%d] is an unexpected value\n", current_fd);
+						fd_read_state[current_fd] = awaiting_header;
+						fd_message_size[current_fd] = -1;
 						break;
 					}
+					//} while (true);
+				} while (false);
 
-					// Check to see if the connection has been
-					// closed by the client
-					if (rc == 0) {
-						printf("  Connection closed in \"reading existing connection\"\n");
-						close_conn = TRUE;
-						break;
-					}
-
-					// Data was received
-					if (rc == HEADER_SIZE) 
-						header_buffer[rc - 1] = 0;
-					else
-						header_buffer[rc] = 0;
-
-					len = rc;
-					printf(">>ClientFD:%d\n", (int)fds[i].fd);
-					//printf("Header:%s\n", header_buffer);
-
-					std::string header_string(header_buffer);
-					header_string.erase(remove_if(header_string.begin(), header_string.end(), isspace));
-					int message_size = stoi(header_string);
-
-					
-					char *message_buffer = new char[message_size];
-					//receive message
-					//memset(message_buffer, 0, message_size);
-					rc = recv(fds[i].fd, message_buffer, message_size, 0);
-
-					message_buffer[message_size] = 0;
-					std::cout << "Message:" << message_buffer << "\n" << std::endl;
-
-				} while (TRUE);
-
-				// If the close_conn flag was turned on, we need
-				// to clean up this active connection. This
-				// clean up process includes removing the
-				// descriptor.
-				/*if (close_conn) {
-					closesocket(fds[i].fd);
-					fds[i].fd = -1;
-					compress_array = TRUE;
-				}*/
-
+				// If the close_conn flag was turned on, we to clean up this active connection. This
+				// clean up process includes removing the descriptor.
+				if (close_conn) {
+					closesocket(fds[current_fd].fd);
+					fds[current_fd].fd = -1;
+					fds[current_fd].events = 0;
+					fds[current_fd].revents = 0;
+					compress_array = true;
+				}
 			}  // End of existing connection is readable
-			
 		} // End of loop through pollable descriptors
 
-		if (close_conn) {
-			closesocket(fds[i].fd);
-			fds[i].fd = -1;
-			fds[i].events = 0;
-			fds[i].revents = 0;
-			compress_array = TRUE;
-		}
-
-		// If the compress_array flag was turned on, we need
-		// to squeeze together the array and decrement the number
-		// of file descriptors. We do not need to move back the
-		// events and revents fields because the events will always
-		// be POLLIN in this case, and revents is output.
+		// If the compress_array flag was turned on, we need to squeeze
+		// together the array and decrement the number of file descriptors.
 		if (compress_array) {
 			compress_array = FALSE;
-			for (i = 0; i < nfds; i++) {
-				if (fds[i].fd == -1) {
-					for (j = i; j < nfds - 1; j++) {
+			for (current_fd = 0; current_fd < nfds; current_fd++) {
+				if (fds[current_fd].fd == -1) {
+					for (j = current_fd; j < nfds - 1; j++) {
 						fds[j].fd = fds[j + 1].fd;
+						fd_read_state[j] = fd_read_state[j + 1];
+						fd_message_size[j] = fd_message_size[j + 1];
 					}
-					i--;
+					current_fd--;
 					nfds--;
 				}
 			}
@@ -213,9 +248,9 @@ void SocketServer::pollTest() {
 	/*************************************************************/
 	/* Clean up all of the sockets that are open                 */
 	/*************************************************************/
-	for (i = 0; i < nfds; i++) {
-		if (fds[i].fd >= 0)
-			closesocket(fds[i].fd);
+	for (current_fd = 0; current_fd < nfds; current_fd++) {
+		if (fds[current_fd].fd >= 0)
+			closesocket(fds[current_fd].fd);
 	}
 }
 
