@@ -40,15 +40,11 @@ void SocketServer::initServer() {
 
 void SocketServer::pollTest() {
 	int    len, rc, on = 1;
-	//int	   header_rc = -1;
-	//int    message_rc = -1;
 	int    new_sd = -1;
 	int    desc_ready, end_server = FALSE, compress_array = FALSE;
 	int    close_conn;
 	char   header_buffer[HEADER_SIZE];
-	int    timeout;
-	//struct pollfd fds[200];
-	int    current_size = 0, current_fd, j;
+	int    current_size = 0, current_fd, compress_index;
 	nfds = 1;
 
 	AcceptedSocket* new_connection;
@@ -66,7 +62,7 @@ void SocketServer::pollTest() {
 	fds[0].fd = m_serverSocketFD;
 	fds[0].events = POLLIN;
 
-	timeout = -1;
+	int timeout = -1;
 	//timeout = (3 * 60 * 1000);
 
 	int poll_result;
@@ -109,7 +105,7 @@ void SocketServer::pollTest() {
 				break;
 			}
 
-			//ServerSocketFD is readable. A new connection is available to be made.
+			// ServerSocketFD is readable. A new connection is available to be made.
 			if (fds[current_fd].fd == m_serverSocketFD) {
 				printf(">>Server socket is readable. New connection pending...\n");
 
@@ -128,8 +124,8 @@ void SocketServer::pollTest() {
 				} while (new_connection != NULL);
 			}
 
-			/* This is not the listening socket, therefore an        */
-			/* existing connection must be readable                  */
+			// This is not the listening socket, therefore an
+			// existing connection must be readable
 			else {
 				do {
 					if (fd_read_state[current_fd] == awaiting_header) {
@@ -155,17 +151,22 @@ void SocketServer::pollTest() {
 							printf(">>ERROR:Message header was expected but was not received\n");
 							break;
 						}
-						else
-							header_buffer[header_rc - 1] = 0;
+						/*else
+							header_buffer[header_rc - 1] = 0;*/
 
 						len = header_rc;
+
 						printf(">>ClientFD:%d\n", (int)fds[current_fd].fd);
 						printf("Header:%s\n", header_buffer);
-						printf("header_rc:%d\n", header_rc);
+						//printf("header_rc:%d\n", header_rc);
 
 						std::string header_string(header_buffer);
-						header_string.erase(remove_if(header_string.begin(), header_string.end(), isspace));
-						int message_size = stoi(header_string);
+
+						JSON header_json = JSON::parse(header_string);
+						
+						//int message_size = stoi(header_string);
+						int message_size = header_json.at("message_size");
+
 						fd_message_size[current_fd] = message_size;
 						fd_read_state[current_fd] = awaiting_message;
 					} //End receive header case
@@ -183,6 +184,8 @@ void SocketServer::pollTest() {
 
 						int message_size = fd_message_size[current_fd];
 						char* message_buffer = new char[message_size];
+
+						std::unique_ptr<char[]> message_buffer_uni(new char[message_size]);
 
 						//receive message
 						int message_rc = recv(fds[current_fd].fd, message_buffer, message_size, 0);
@@ -203,6 +206,8 @@ void SocketServer::pollTest() {
 						fd_message_size[current_fd] = -1;  //set to a default value
 
 						std::cout << "Message:" << message_string << "\n" << std::endl;
+
+						//delete[] message_buffer;
 					} //End receive message case
 
 					else {
@@ -214,17 +219,18 @@ void SocketServer::pollTest() {
 					//} while (true);
 				} while (false);
 
-				// If the close_conn flag was turned on, we to clean up this active connection. This
-				// clean up process includes removing the descriptor.
-				if (close_conn) {
-					closesocket(fds[current_fd].fd);
-					fds[current_fd].fd = -1;
-					fds[current_fd].events = 0;
-					fds[current_fd].revents = 0;
-					compress_array = true;
-				}
 			}  // End of existing connection is readable
 		} // End of loop through pollable descriptors
+
+		// If the close_conn flag was turned on, we to clean up this active connection. This
+		// clean up process includes removing the descriptor.
+		if (close_conn) {
+			closesocket(fds[current_fd].fd);
+			fds[current_fd].fd = -1;
+			fds[current_fd].events = 0;
+			fds[current_fd].revents = 0;
+			compress_array = true;
+		}
 
 		// If the compress_array flag was turned on, we need to squeeze
 		// together the array and decrement the number of file descriptors.
@@ -232,10 +238,10 @@ void SocketServer::pollTest() {
 			compress_array = FALSE;
 			for (current_fd = 0; current_fd < nfds; current_fd++) {
 				if (fds[current_fd].fd == -1) {
-					for (j = current_fd; j < nfds - 1; j++) {
-						fds[j].fd = fds[j + 1].fd;
-						fd_read_state[j] = fd_read_state[j + 1];
-						fd_message_size[j] = fd_message_size[j + 1];
+					for (compress_index = current_fd; compress_index < nfds - 1; compress_index++) {
+						fds[compress_index].fd = fds[compress_index + 1].fd;
+						fd_read_state[compress_index] = fd_read_state[compress_index + 1];
+						fd_message_size[compress_index] = fd_message_size[compress_index + 1];
 					}
 					current_fd--;
 					nfds--;
@@ -245,9 +251,7 @@ void SocketServer::pollTest() {
 	} while (true); // End of server running.
 	//} while (end_server == FALSE); // End of server running.
 
-	/*************************************************************/
-	/* Clean up all of the sockets that are open                 */
-	/*************************************************************/
+	// Clean up all of the sockets that are open
 	for (current_fd = 0; current_fd < nfds; current_fd++) {
 		if (fds[current_fd].fd >= 0)
 			closesocket(fds[current_fd].fd);

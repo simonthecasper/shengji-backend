@@ -4,10 +4,10 @@
 
 #include "AcceptedSocket.h"
 #include <mutex>
-
+#include <memory>
 
 #define MAX_THREADS		2
-#define HEADER_SIZE		64
+#define HEADER_SIZE		128
 #define CLIENT_CLOSED	2
 #define FD_ARRAY_SIZE	200
 
