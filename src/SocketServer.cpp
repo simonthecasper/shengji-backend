@@ -128,8 +128,9 @@ void SocketServer::pollTest() {
 			// existing connection must be readable
 			else {
 				do {
+					///////Recieve Header Case//////////
 					if (fd_read_state[current_fd] == awaiting_header) {
-						//Recieve Header Case
+						
 						printf("Receiving Header:\n");
 
 						memset(&header_buffer, 0, sizeof(header_buffer));
@@ -151,28 +152,24 @@ void SocketServer::pollTest() {
 							printf(">>ERROR:Message header was expected but was not received\n");
 							break;
 						}
-						/*else
-							header_buffer[header_rc - 1] = 0;*/
 
-						len = header_rc;
 
 						printf(">>ClientFD:%d\n", (int)fds[current_fd].fd);
 						printf("Header:%s\n", header_buffer);
 						//printf("header_rc:%d\n", header_rc);
 
 						std::string header_string(header_buffer);
-
 						JSON header_json = JSON::parse(header_string);
 						
-						//int message_size = stoi(header_string);
-						int message_size = header_json.at("message_size");
 
+						int message_size = header_json.at("message_size");
 						fd_message_size[current_fd] = message_size;
 						fd_read_state[current_fd] = awaiting_message;
 					} //End receive header case
 
+					/////////////Receive Message Case///////////////
 					else if (fd_read_state[current_fd] == awaiting_message) {
-						//Receive Message Case
+						
 						printf("Receiving Message:\n");
 
 						if (fd_message_size[current_fd] < 1) {
@@ -183,12 +180,10 @@ void SocketServer::pollTest() {
 						}
 
 						int message_size = fd_message_size[current_fd];
-						char* message_buffer = new char[message_size];
+						std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
 
-						std::unique_ptr<char[]> message_buffer_uni(new char[message_size]);
-
-						//receive message
-						int message_rc = recv(fds[current_fd].fd, message_buffer, message_size, 0);
+						//Receive message
+						int message_rc = recv(fds[current_fd].fd, message_buffer.get(), message_size, 0);
 
 						if (message_rc < 0) {
 							printf(">>ERROR:Nothing was available to read\n");
@@ -196,18 +191,14 @@ void SocketServer::pollTest() {
 							fd_message_size[current_fd] = -1;
 							break;
 						}
-
 						printf("message_rc:%d\n", message_rc);
-						message_buffer[message_size] = 0;
 
-						std::string message_string(message_buffer);
 
+						std::string message_string(message_buffer.get());
 						fd_read_state[current_fd] = awaiting_header;
 						fd_message_size[current_fd] = -1;  //set to a default value
 
 						std::cout << "Message:" << message_string << "\n" << std::endl;
-
-						//delete[] message_buffer;
 					} //End receive message case
 
 					else {
