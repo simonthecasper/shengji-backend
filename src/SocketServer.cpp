@@ -8,57 +8,62 @@ SocketServer::SocketServer() {
 	std::cout << "in constructor\n" << std::endl;
 	initServer();
 	printIP();
-
+	
 	pollTest();
 
-	//initFDSet();
 	//initThreads();
-	
-	/*while (true) {
-		int listen_result = listen(m_serverSocketFD, 10);
-		AcceptedSocket* new_connection = new AcceptedSocket;
-		new_connection = acceptIncomingConnection(m_serverSocketFD);
-		m_client_list.insert(new_connection);
-	}*/
 }
 
 
 void SocketServer::initServer() {
 	setupServerSocketFD();
-
 	
-	//m_serverAddress = createIPv4Address("", SERVER_PORT);
 	//m_serverAddress = createIPv4Address("127.0.0.1", SERVER_PORT);
 	m_serverAddress = createIPv4Address("192.168.0.77", SERVER_PORT);
 
 	int bind_result = bind(m_serverSocketFD, (struct sockaddr*)m_serverAddress, sizeof(*m_serverAddress));
-	std::cout << bind_result << "\n" << std::endl;
+	//std::cout << bind_result << "\n" << std::endl;
 	check(bind_result, "Server bind");
-	std::cout << "Server socket bound successfullly" << std::endl;
+	std::cout << "Server socket bound successfullly\n" << std::endl;
+}
+
+
+void SocketServer::pollAcceptNewConnections() {
+	do {
+		//Accept each incoming connection
+		AcceptedSocket* new_connection = acceptIncomingConnection(m_serverSocketFD);
+		if (new_connection == NULL) { break; }
+
+		// Add valid incoming connections to the pollfd structure
+		SOCKET new_sd = new_connection->m_socketFD;
+		printf(">>New incoming connection : %d\n\n", new_sd);
+		fds[nfds].fd = new_sd;
+		fds[nfds].events = POLLIN;
+		nfds++;
+	} while (true);
 }
 
 
 void SocketServer::pollTest() {
-	int    len, rc, on = 1;
-	int    new_sd = -1;
-	int    desc_ready, end_server = FALSE, compress_array = FALSE;
-	int    close_conn;
+	m_mutex_compress_fd_array = CreateMutex(
+		NULL,
+		FALSE,
+		NULL);
+
+	setCompressFDArrayFalse();
+
+	bool   close_conn;
 	char   header_buffer[HEADER_SIZE];
-	int    current_size = 0, current_fd, compress_index;
+	int    current_size, current_fd;
 	nfds = 1;
 
 	AcceptedSocket* new_connection;
 
 	// Set the listen back log
-	rc = listen(m_serverSocketFD, 32);
-	if (rc < 0) {
-		perror("listen() failed");
-		closesocket(m_serverSocketFD);
-		exit(-1);
-	}
+	int listen_result = listen(m_serverSocketFD, 32);
+	check(listen_result, "poll listen");
 
 	memset(fds, 0, sizeof(fds));
-
 	fds[0].fd = m_serverSocketFD;
 	fds[0].events = POLLIN;
 
@@ -67,15 +72,13 @@ void SocketServer::pollTest() {
 
 	int poll_result;
 	do {
-		//printf("Waiting on poll()...\n");
 		poll_result = WSAPoll(fds, nfds, timeout);
 
 		if (poll_result == SOCKET_ERROR) {
 			//Socket error case
 			perror("  poll() failed with SOCKET_ERROR");
 			break;
-		}
-		else if (poll_result == 0) {
+		} else if (poll_result == 0) {
 			//timeout case
 			printf("  poll() timed out.  End program.\n");
 			break;
@@ -85,14 +88,13 @@ void SocketServer::pollTest() {
 		// determine which ones they are.
 		current_size = nfds;
 		for (current_fd = 0; current_fd < current_size; current_fd++) {
-			close_conn = FALSE;
+			close_conn = false;
 
-			if (fds[current_fd].revents == 0)
-				continue;
+			if (fds[current_fd].revents == 0) continue;
 
 			if (fds[current_fd].revents == CLIENT_CLOSED) {
 				printf(">>Index %d Connection closed by revents\n", current_fd);
-				close_conn = TRUE;
+				close_conn = true;
 				break;
 			}
 
@@ -101,117 +103,81 @@ void SocketServer::pollTest() {
 			if ((fds[current_fd].revents & POLLIN) == 0) {
 				printf(">>revents is not a \"Read available\" value\n");
 				printf(">>revents = %d\n\n", fds[current_fd].revents);
-				end_server = TRUE;
 				break;
 			}
 
 			// ServerSocketFD is readable. A new connection is available to be made.
 			if (fds[current_fd].fd == m_serverSocketFD) {
 				printf(">>Server socket is readable. New connection pending...\n");
-
-				do {
-					//Accept each incoming connection
-					new_connection = acceptIncomingConnection(m_serverSocketFD);
-
-					// Add valid incoming connections to the pollfd structure
-					if (new_connection != NULL) {
-						new_sd = new_connection->m_socketFD;
-						printf(">>New incoming connection : %d\n\n", new_sd);
-						fds[nfds].fd = new_sd;
-						fds[nfds].events = POLLIN;
-						nfds++;
-					}
-				} while (new_connection != NULL);
+				pollAcceptNewConnections();
 			}
 
 			// This is not the listening socket, therefore an
 			// existing connection must be readable
 			else {
-				do {
-					///////Recieve Header Case//////////
-					if (fd_read_state[current_fd] == awaiting_header) {
-						
-						printf("Receiving Header:\n");
+				//////////Receiving Header Case/////////////
+				if (fd_read_state[current_fd] == awaiting_header) {
+					memset(&header_buffer, 0, sizeof(header_buffer));
+					int header_rc = recv(fds[current_fd].fd, header_buffer, sizeof(header_buffer), 0);
 
-						memset(&header_buffer, 0, sizeof(header_buffer));
-						int header_rc = recv(fds[current_fd].fd, header_buffer, sizeof(header_buffer), 0);
+					if (header_rc < 0)  continue;
 
-						if (header_rc < 0)  //No more data to read
-							break;
+					// Header is expected
+					if (header_rc != HEADER_SIZE) {
+						printf(">>ERROR:Message header was expected but was not received\n");
+						continue;
+					}
+					std::string header_string(header_buffer);
+					JSON header_json = JSON::parse(header_string);
 
-						if (header_rc == 0) {
-							printf("  Connection closed in \"reading existing connection\"\n");
-							close_conn = TRUE;
-							break;
-						}
+					int message_size = header_json.at("message_size");
+					fd_message_size[current_fd] = message_size;
+					fd_read_state[current_fd] = awaiting_message;
 
-						//printf("header_rc:%d\n", header_rc);
-
-						// Header is expected
-						if (header_rc != HEADER_SIZE) {
-							printf(">>ERROR:Message header was expected but was not received\n");
-							break;
-						}
+					printf(">>ClientFD:%d\n", (int)fds[current_fd].fd);
+					printf("Header:%s\n", header_buffer);
+				} /////////End receive header case///////////////
 
 
-						printf(">>ClientFD:%d\n", (int)fds[current_fd].fd);
-						printf("Header:%s\n", header_buffer);
-						//printf("header_rc:%d\n", header_rc);
-
-						std::string header_string(header_buffer);
-						JSON header_json = JSON::parse(header_string);
-						
-
-						int message_size = header_json.at("message_size");
-						fd_message_size[current_fd] = message_size;
-						fd_read_state[current_fd] = awaiting_message;
-					} //End receive header case
-
-					/////////////Receive Message Case///////////////
-					else if (fd_read_state[current_fd] == awaiting_message) {
-						
-						printf("Receiving Message:\n");
-
-						if (fd_message_size[current_fd] < 1) {
-							printf(">>ERROR:Expected message size is not a valid value\n");
-							fd_read_state[current_fd] = awaiting_header;
-							fd_message_size[current_fd] = -1;
-							break;
-						}
-
-						int message_size = fd_message_size[current_fd];
-						std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
-
-						//Receive message
-						int message_rc = recv(fds[current_fd].fd, message_buffer.get(), message_size, 0);
-
-						if (message_rc < 0) {
-							printf(">>ERROR:Nothing was available to read\n");
-							fd_read_state[current_fd] = awaiting_header;
-							fd_message_size[current_fd] = -1;
-							break;
-						}
-						printf("message_rc:%d\n", message_rc);
-
-
-						std::string message_string(message_buffer.get());
-						fd_read_state[current_fd] = awaiting_header;
-						fd_message_size[current_fd] = -1;  //set to a default value
-
-						std::cout << "Message:" << message_string << "\n" << std::endl;
-					} //End receive message case
-
-					else {
-						printf(">>ERROR:fd_read_state[%d] is an unexpected value\n", current_fd);
+				/////////////Receive Message Case///////////////
+				else if (fd_read_state[current_fd] == awaiting_message) {
+					if (fd_message_size[current_fd] < 1) {
+						printf(">>ERROR:Expected message size is not a valid value\n");
 						fd_read_state[current_fd] = awaiting_header;
 						fd_message_size[current_fd] = -1;
-						break;
+						continue;
 					}
-					//} while (true);
-				} while (false);
 
+					int message_size = fd_message_size[current_fd];
+					std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
+
+					//Receive message
+					int message_rc = recv(fds[current_fd].fd, message_buffer.get(), message_size, 0);
+
+					if (message_rc < 0) {
+						printf(">>ERROR:Nothing was available to read\n");
+						fd_read_state[current_fd] = awaiting_header;
+						fd_message_size[current_fd] = -1;
+						continue;
+					}
+					std::string message_string(message_buffer.get());
+					std::cout << "Message:" << message_string << "\n" << std::endl;
+						
+					fd_read_state[current_fd] = awaiting_header;
+					fd_message_size[current_fd] = -1;  //set to a default value
+
+					printf("message_rc:%d\n", message_rc);
+				} /////////////End receive message case////////////////
+
+				else { ////////Error Case////////
+					printf(">>ERROR:fd_read_state[%d] is an unexpected value\n", current_fd);
+					fd_read_state[current_fd] = awaiting_header;
+					fd_message_size[current_fd] = -1;
+					continue;
+				}
 			}  // End of existing connection is readable
 		} // End of loop through pollable descriptors
+
 
 		// If the close_conn flag was turned on, we to clean up this active connection. This
 		// clean up process includes removing the descriptor.
@@ -220,38 +186,23 @@ void SocketServer::pollTest() {
 			fds[current_fd].fd = -1;
 			fds[current_fd].events = 0;
 			fds[current_fd].revents = 0;
-			compress_array = true;
+			setCompressFDArrayTrue();
 		}
 
 		// If the compress_array flag was turned on, we need to squeeze
 		// together the array and decrement the number of file descriptors.
-		if (compress_array) {
-			compress_array = FALSE;
-			for (current_fd = 0; current_fd < nfds; current_fd++) {
-				if (fds[current_fd].fd == -1) {
-					for (compress_index = current_fd; compress_index < nfds - 1; compress_index++) {
-						fds[compress_index].fd = fds[compress_index + 1].fd;
-						fd_read_state[compress_index] = fd_read_state[compress_index + 1];
-						fd_message_size[compress_index] = fd_message_size[compress_index + 1];
-					}
-					current_fd--;
-					nfds--;
-				}
-			}
+		if (m_compress_fd_array) {
+			setCompressFDArrayFalse();
+			compressFDArray();
 		}
 	} while (true); // End of server running.
-	//} while (end_server == FALSE); // End of server running.
 
 	// Clean up all of the sockets that are open
-	for (current_fd = 0; current_fd < nfds; current_fd++) {
-		if (fds[current_fd].fd >= 0)
-			closesocket(fds[current_fd].fd);
-	}
+	closeAllSockets();
 }
 
 
 int SocketServer::initThreads() {
-
 	//Create queue control mutex
 	m_queue_control_mutex = CreateMutex(
 		NULL,
@@ -268,9 +219,7 @@ int SocketServer::initThreads() {
 		ThreadRoleArray[i].server = this;
 
 		if (i == 0)
-			ThreadRoleArray[i].role = listen_new_connection;
-		else if (i == 1)
-			ThreadRoleArray[i].role = receive_data;
+			ThreadRoleArray[i].role = listen_incoming_data;
 		else
 			ThreadRoleArray[i].role = work;
 
@@ -299,12 +248,6 @@ int SocketServer::initThreads() {
 	CloseHandle(m_queue_control_mutex);
 
 	return 0;
-}
-
-
-void SocketServer::initFDSet() {
-	FD_ZERO(&m_current_sockets);
-	FD_SET(m_serverSocketFD, &m_current_sockets);
 }
 
 
@@ -374,95 +317,91 @@ DWORD WINAPI SocketServer::staticThreadFunction(void* param) {
 
 
 DWORD WINAPI SocketServer::threadFunction(ThreadRoleEnum* role) {
-
-	struct timeval timeout;
-	timeout.tv_sec = 1;
-	timeout.tv_usec = 0;
-
-	int select_res;
-
-	//int listen_result;
-	AcceptedSocket* new_connection;
-
-	while (true) {
-		
-		timeout.tv_sec = 10;
-		timeout.tv_usec = 0;
-
-		switch (*role) {
-			case listen_new_connection:
-				listenAndAcceptIncomingConnection(m_serverSocketFD);
-				break;
-
-			case receive_data:
-				if (!m_client_list.empty()) {
-					std::cout << "client list not empty" << std::endl;
-
-
-					FD_ZERO(&m_current_sockets);
-					FD_SET(m_serverSocketFD, &m_current_sockets);
-
-					//copy because select is destructive
-					m_ready_sockets = m_current_sockets;
-
-
-					std::cout << "Waiting for select" << std::endl;
-					//select_res = select(FD_SETSIZE, &m_ready_sockets, NULL, NULL, &timeout);
-					select_res = select(FD_SETSIZE, &m_current_sockets, NULL, NULL, NULL);
-					std::cout << "select_res:" << select_res << "\n" << std::endl;
-
-					switch (select_res) {
-						case 0:
-							//Timeout case
-							break;
-
-						case -1:
-							//Error case
-							break;
-
-						default:
-							//Original plan was to use 1 thread for receiving new connections and data from
-							//  existing connections. Hence, FDSETs were needed.
-							//
-							//New plan is to have 1 thread listen for new connections and a different receive
-							//  so FDSETs may be put on hold for a bit
-							for (int i = 0; i < FD_SETSIZE; i++) {
-								//if (FD_ISSET(i, &m_ready_sockets)) {
-								if (FD_ISSET(i, &m_current_sockets)) {
-									if (i == m_serverSocketFD) {
-										////New connection to accept
-										//new_connection = acceptIncomingConnection(m_serverSocketFD);
-										//m_client_list.insert(new_connection);
-										//FD_SET(new_connection->m_socketFD, &m_current_sockets);
-										//FD_CLR(i, &m_current_sockets);
-									}
-									else {
-										//General client communication
-
-										std::cout << "set socket found\n\n" << std::endl;
-										AcceptedSocket* clientSocket = acceptIncomingConnection(m_serverSocketFD);
-										char buffer[1024];
-										int amount_received = recv(clientSocket->m_socketFD, buffer, 1024, 0);
-
-										if (amount_received > 0) {
-											buffer[amount_received] = 0;
-											std::cout << buffer << "\n" << std::endl;
-										}
-										FD_CLR(i, &m_current_sockets);
-									}
-								}
-							}
-							break;
-					}
-				}
-				break;
-			
-			case work:
-
-				break;
-		}
-	}
-
+//
+//	struct timeval timeout;
+//	timeout.tv_sec = 1;
+//	timeout.tv_usec = 0;
+//
+//	int select_res;
+//
+//	//int listen_result;
+//	AcceptedSocket* new_connection;
+//
+//	while (true) {
+//		
+//		timeout.tv_sec = 10;
+//		timeout.tv_usec = 0;
+//
+//		switch (*role) {
+//			case listen_incoming_data:
+//				if (!m_client_list.empty()) {
+//					std::cout << "client list not empty" << std::endl;
+//
+//
+//					/*FD_ZERO(&m_current_sockets);
+//					FD_SET(m_serverSocketFD, &m_current_sockets);*/
+//
+//					//copy because select is destructive
+//					//m_ready_sockets = m_current_sockets;
+//
+//
+//					std::cout << "Waiting for select" << std::endl;
+//					//select_res = select(FD_SETSIZE, &m_ready_sockets, NULL, NULL, &timeout);
+//					//select_res = select(FD_SETSIZE, &m_current_sockets, NULL, NULL, NULL);
+//					std::cout << "select_res:" << select_res << "\n" << std::endl;
+//
+//					switch (select_res) {
+//						case 0:
+//							//Timeout case
+//							break;
+//
+//						case -1:
+//							//Error case
+//							break;
+//
+//						default:
+//							//Original plan was to use 1 thread for receiving new connections and data from
+//							//  existing connections. Hence, FDSETs were needed.
+//							//
+//							//New plan is to have 1 thread listen for new connections and a different receive
+//							//  so FDSETs may be put on hold for a bit
+//							for (int i = 0; i < FD_SETSIZE; i++) {
+//								//if (FD_ISSET(i, &m_ready_sockets)) {
+//								if (FD_ISSET(i, &m_current_sockets)) {
+//									if (i == m_serverSocketFD) {
+//										////New connection to accept
+//										//new_connection = acceptIncomingConnection(m_serverSocketFD);
+//										//m_client_list.insert(new_connection);
+//										//FD_SET(new_connection->m_socketFD, &m_current_sockets);
+//										//FD_CLR(i, &m_current_sockets);
+//									}
+//									else {
+//										//General client communication
+//
+//										std::cout << "set socket found\n\n" << std::endl;
+//										AcceptedSocket* clientSocket = acceptIncomingConnection(m_serverSocketFD);
+//										char buffer[1024];
+//										int amount_received = recv(clientSocket->m_socketFD, buffer, 1024, 0);
+//
+//										if (amount_received > 0) {
+//											buffer[amount_received] = 0;
+//											std::cout << buffer << "\n" << std::endl;
+//										}
+//										FD_CLR(i, &m_current_sockets);
+//									}
+//								}
+//							}
+//							break;
+//					}
+//				}
+//				break;
+//			
+//			case work:
+//
+//				break;
+//		}
+//	}
+//
 	return NULL;
 }
 
@@ -531,8 +470,8 @@ JSON SocketServer::takeFromQueue() {
 
 
 void SocketServer::check(int input,std::string instance) {
-	if (input == SOCKET_ERROR) {
-		std::cout << WSAGetLastError() << std::endl;
+	if (input == -1) {
+		std::cout << "Error at " << instance << std::endl;
 		exit(2);
 	}
 }
@@ -574,4 +513,66 @@ void SocketServer::setupServerSocketFD() {
 std::string SocketServer::pfdReadExistingConnection(int index) {
 
 	return "asdf";
+}
+
+void SocketServer::compressFDArray() {
+	for (int current_fd = 0; current_fd < nfds; current_fd++) {
+		if (fds[current_fd].fd == -1) {
+			for (int compress_index = current_fd; compress_index < nfds - 1; compress_index++) {
+				fds[compress_index] = fds[compress_index + 1];
+				fd_read_state[compress_index] = fd_read_state[compress_index + 1];
+				fd_message_size[compress_index] = fd_message_size[compress_index + 1]; 
+			}
+			current_fd--;
+			nfds--;
+		}
+	}
+}
+
+void SocketServer::closeAllSockets() {
+	for (int current_fd = 0; current_fd < nfds; current_fd++) {
+		if (fds[current_fd].fd >= 0)
+			closesocket(fds[current_fd].fd);
+	}
+}
+
+
+DWORD WINAPI SocketServer::setCompressFDArrayTrue() {
+	DWORD dwWaitResult = WaitForSingleObject(m_mutex_compress_fd_array, INFINITE);
+	switch (dwWaitResult) {
+		// The thread got ownership of the mutex
+		case WAIT_OBJECT_0:
+			m_compress_fd_array = true;
+			// Release ownership of the mutex object
+			if (!ReleaseMutex(m_mutex_compress_fd_array)) {
+				printf("Error releasing mutex for m_mutex_compress_fd_array");
+				exit(-1);
+			}
+			break;
+
+		// The thread got ownership of an abandoned mutex
+		case WAIT_ABANDONED:
+			return FALSE;
+	}
+	return true;
+}
+
+DWORD WINAPI SocketServer::setCompressFDArrayFalse() {
+	DWORD dwWaitResult = WaitForSingleObject(m_mutex_compress_fd_array, INFINITE);
+	switch (dwWaitResult) {
+		// The thread got ownership of the mutex
+	case WAIT_OBJECT_0:
+		m_compress_fd_array = false;
+		// Release ownership of the mutex object
+		if (!ReleaseMutex(m_mutex_compress_fd_array)) {
+			printf("Error releasing mutex for m_mutex_compress_fd_array");
+			exit(-1);
+		}
+		break;
+
+		// The thread got ownership of an abandoned mutex
+	case WAIT_ABANDONED:
+		return FALSE;
+	}
+	return true;
 }

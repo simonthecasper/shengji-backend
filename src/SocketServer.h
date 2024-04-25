@@ -7,13 +7,13 @@
 #include <memory>
 
 #define MAX_THREADS		2
-#define HEADER_SIZE		128
+#define HEADER_SIZE		64
 #define CLIENT_CLOSED	2
 #define FD_ARRAY_SIZE	200
 
 class SocketServer;
 
-enum ThreadRoleEnum { listen_new_connection, receive_data, work };
+enum ThreadRoleEnum { listen_incoming_data, work };
 
 enum SocketReadState { awaiting_header, awaiting_message };
 
@@ -37,15 +37,14 @@ private:
 	ThreadRoleStruct		ThreadRoleArray[MAX_THREADS];
 	std::queue<JSON>		m_work_queue;
 	HANDLE					m_queue_control_mutex;
-	
-	FD_SET					m_current_sockets;
-	FD_SET					m_ready_sockets;
 
 	//Polling
 	int						nfds;
 	struct pollfd			fds[FD_ARRAY_SIZE];
 	enum SocketReadState	fd_read_state[FD_ARRAY_SIZE];
 	int						fd_message_size[FD_ARRAY_SIZE];
+	bool					m_compress_fd_array;
+	HANDLE					m_mutex_compress_fd_array;
 
 	//Session handling
 	std::unordered_set<AcceptedSocket*> m_client_list;
@@ -88,4 +87,14 @@ public:
 	void setupServerSocketFD();
 
 	std::string pfdReadExistingConnection(int fds_index);
+
+	void compressFDArray();
+
+	void closeAllSockets();
+
+	void pollAcceptNewConnections();
+
+	DWORD WINAPI setCompressFDArrayTrue();
+
+	DWORD WINAPI setCompressFDArrayFalse();
 };
