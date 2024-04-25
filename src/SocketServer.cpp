@@ -9,7 +9,8 @@ SocketServer::SocketServer() {
 	initServer();
 	printIP();
 	
-	pollTest();
+	initMutex();
+	pollSocketArray();
 
 	//initThreads();
 }
@@ -25,6 +26,18 @@ void SocketServer::initServer() {
 	//std::cout << bind_result << "\n" << std::endl;
 	check(bind_result, "Server bind");
 	std::cout << "Server socket bound successfullly\n" << std::endl;
+}
+
+
+void SocketServer::initMutex() {
+	//Create compress_fd_array mutex
+	m_mutex_compress_flag = CreateMutex(NULL, FALSE, NULL);
+	setCompressFDArrayFalse();
+
+	m_mutex_fd_array = CreateMutex(NULL, FALSE, NULL);
+
+	//Create queue control mutex
+	m_queue_control_mutex = CreateMutex(NULL, FALSE, NULL);
 }
 
 
@@ -44,49 +57,81 @@ void SocketServer::pollAcceptNewConnections() {
 }
 
 
-void SocketServer::pollTest() {
-	m_mutex_compress_fd_array = CreateMutex(
-		NULL,
-		FALSE,
-		NULL);
+std::string SocketServer::pollReceiveMessageHeader(int index) {
+	char header_buffer[HEADER_SIZE];
+	memset(&header_buffer, 0, sizeof(header_buffer));
+	int header_rc = recv(fds[index].fd, header_buffer, sizeof(header_buffer), 0);
 
-	setCompressFDArrayFalse();
+	if (header_rc < 0)  return "continue";
 
-	bool   close_conn;
-	char   header_buffer[HEADER_SIZE];
-	int    current_size, current_fd;
-	nfds = 1;
+	// Header is expected
+	if (header_rc != HEADER_SIZE) {
+		printf(">>ERROR:Message header was expected but was not received\n");
+		return "continue";
+	}
+	std::string header_string(header_buffer);
+	JSON header_json = JSON::parse(header_string);
 
-	AcceptedSocket* new_connection;
+	int message_size = header_json.at("message_size");
+	fd_message_size[index] = message_size;
+	fd_read_state[index] = awaiting_body;
 
+	return header_string;
+}
+
+
+std::string SocketServer::pollReceiveMessageBody(int current_fd) {
+	if (fd_message_size[current_fd] < 1) {
+		printf(">>ERROR:Expected message size is not a valid value\n");
+		fd_read_state[current_fd] = awaiting_header;
+		fd_message_size[current_fd] = -1;
+		return "continue";
+	}
+
+	int message_size = fd_message_size[current_fd];
+	std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
+
+	//Receive message
+	int message_rc = recv(fds[current_fd].fd, message_buffer.get(), message_size, 0);
+
+	if (message_rc < 0) {
+		printf(">>ERROR:Nothing was available to read\n");
+		fd_read_state[current_fd] = awaiting_header;
+		fd_message_size[current_fd] = -1;
+		return "continue";
+	}
+	std::string message_string(message_buffer.get());
+	//std::cout << "Message:" << message_string << "\n" << std::endl;
+
+	fd_read_state[current_fd] = awaiting_header;
+	fd_message_size[current_fd] = -1;  //set to a default value
+
+	return message_string;
+}
+
+
+void SocketServer::pollSocketArray() {
 	// Set the listen back log
-	int listen_result = listen(m_serverSocketFD, 32);
+	int		listen_result = listen(m_serverSocketFD, LISTEN_BACKLOG);
 	check(listen_result, "poll listen");
 
 	memset(fds, 0, sizeof(fds));
 	fds[0].fd = m_serverSocketFD;
 	fds[0].events = POLLIN;
+	nfds = 1;
 
-	int timeout = -1;
+	int		timeout = -1;
 	//timeout = (3 * 60 * 1000);
 
-	int poll_result;
+	int		current_fd;
+	bool	close_conn;
+	char	header_buffer[HEADER_SIZE];
+
 	do {
-		poll_result = WSAPoll(fds, nfds, timeout);
+		int poll_result = waitForPoll(timeout);
 
-		if (poll_result == SOCKET_ERROR) {
-			//Socket error case
-			perror("  poll() failed with SOCKET_ERROR");
-			break;
-		} else if (poll_result == 0) {
-			//timeout case
-			printf("  poll() timed out.  End program.\n");
-			break;
-		}
-
-		// One or more descriptors are readable. Need to
-		// determine which ones they are.
-		current_size = nfds;
+		// One or more descriptors are readable
+		int current_size = nfds;
 		for (current_fd = 0; current_fd < current_size; current_fd++) {
 			close_conn = false;
 
@@ -115,79 +160,32 @@ void SocketServer::pollTest() {
 			// This is not the listening socket, therefore an
 			// existing connection must be readable
 			else {
-				//////////Receiving Header Case/////////////
-				if (fd_read_state[current_fd] == awaiting_header) {
-					memset(&header_buffer, 0, sizeof(header_buffer));
-					int header_rc = recv(fds[current_fd].fd, header_buffer, sizeof(header_buffer), 0);
+				std::string message_string;
 
-					if (header_rc < 0)  continue;
+				switch (fd_read_state[current_fd]) {
+					case awaiting_header:
+						message_string = pollReceiveMessageHeader(current_fd);
+						break;
 
-					// Header is expected
-					if (header_rc != HEADER_SIZE) {
-						printf(">>ERROR:Message header was expected but was not received\n");
-						continue;
-					}
-					std::string header_string(header_buffer);
-					JSON header_json = JSON::parse(header_string);
-
-					int message_size = header_json.at("message_size");
-					fd_message_size[current_fd] = message_size;
-					fd_read_state[current_fd] = awaiting_message;
-
-					printf(">>ClientFD:%d\n", (int)fds[current_fd].fd);
-					printf("Header:%s\n", header_buffer);
-				} /////////End receive header case///////////////
-
-
-				/////////////Receive Message Case///////////////
-				else if (fd_read_state[current_fd] == awaiting_message) {
-					if (fd_message_size[current_fd] < 1) {
-						printf(">>ERROR:Expected message size is not a valid value\n");
-						fd_read_state[current_fd] = awaiting_header;
-						fd_message_size[current_fd] = -1;
-						continue;
-					}
-
-					int message_size = fd_message_size[current_fd];
-					std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
-
-					//Receive message
-					int message_rc = recv(fds[current_fd].fd, message_buffer.get(), message_size, 0);
-
-					if (message_rc < 0) {
-						printf(">>ERROR:Nothing was available to read\n");
-						fd_read_state[current_fd] = awaiting_header;
-						fd_message_size[current_fd] = -1;
-						continue;
-					}
-					std::string message_string(message_buffer.get());
-					std::cout << "Message:" << message_string << "\n" << std::endl;
-						
-					fd_read_state[current_fd] = awaiting_header;
-					fd_message_size[current_fd] = -1;  //set to a default value
-
-					printf("message_rc:%d\n", message_rc);
-				} /////////////End receive message case////////////////
-
-				else { ////////Error Case////////
-					printf(">>ERROR:fd_read_state[%d] is an unexpected value\n", current_fd);
-					fd_read_state[current_fd] = awaiting_header;
-					fd_message_size[current_fd] = -1;
-					continue;
+					case awaiting_body:
+						message_string = pollReceiveMessageBody(current_fd);
+						break;
 				}
+
+				//continue case
+				if (message_string.compare("continue") == 0) { continue; }
+				
+				//Print message
+				else { std::cout << message_string << std::endl; }
+
+
+
 			}  // End of existing connection is readable
 		} // End of loop through pollable descriptors
 
 
-		// If the close_conn flag was turned on, we to clean up this active connection. This
-		// clean up process includes removing the descriptor.
-		if (close_conn) {
-			closesocket(fds[current_fd].fd);
-			fds[current_fd].fd = -1;
-			fds[current_fd].events = 0;
-			fds[current_fd].revents = 0;
-			setCompressFDArrayTrue();
-		}
+		// If the close_conn flag was turned on, we to clean up this active connection.
+		if (close_conn) { closeConnectionFDArray(current_fd); }
 
 		// If the compress_array flag was turned on, we need to squeeze
 		// together the array and decrement the number of file descriptors.
@@ -202,18 +200,22 @@ void SocketServer::pollTest() {
 }
 
 
-int SocketServer::initThreads() {
-	//Create queue control mutex
-	m_queue_control_mutex = CreateMutex(
-		NULL,
-		FALSE,
-		NULL);
+int SocketServer::waitForPoll(int timeout) {
+	int poll_result = WSAPoll(fds, nfds, timeout);
 
-	if (m_queue_control_mutex == NULL) {
-		printf("CreateMutex error: %d\n", GetLastError());
-		return 1;
+	if (poll_result == SOCKET_ERROR) { //Socket error case
+		perror("  poll() failed with SOCKET_ERROR. Ending program.\n");
+		exit(-1);
+	} else if (poll_result == 0) { //timeout case
+		printf("  poll() timed out. End program.\n");
+		exit(-1);
 	}
 
+	return poll_result;
+}
+
+
+int SocketServer::initThreads() {
 	//Create worker threads
 	for (int i = 0; i < MAX_THREADS; i++) {
 		ThreadRoleArray[i].server = this;
@@ -274,7 +276,6 @@ SOCKET SocketServer::createTCPIPv4Socket() {
 
 
 AcceptedSocket* SocketServer::acceptIncomingConnection(SOCKET serverSocketFD) {
-	
 	SOCKADDR_IN clientAddress;
 	int clientAddressSize = sizeof(clientAddress);
 	SOCKET clientSocketFD = accept(serverSocketFD, (sockaddr*)&clientAddress, &clientAddressSize);
@@ -317,91 +318,19 @@ DWORD WINAPI SocketServer::staticThreadFunction(void* param) {
 
 
 DWORD WINAPI SocketServer::threadFunction(ThreadRoleEnum* role) {
-//
-//	struct timeval timeout;
-//	timeout.tv_sec = 1;
-//	timeout.tv_usec = 0;
-//
-//	int select_res;
-//
-//	//int listen_result;
-//	AcceptedSocket* new_connection;
-//
-//	while (true) {
-//		
-//		timeout.tv_sec = 10;
-//		timeout.tv_usec = 0;
-//
-//		switch (*role) {
-//			case listen_incoming_data:
-//				if (!m_client_list.empty()) {
-//					std::cout << "client list not empty" << std::endl;
-//
-//
-//					/*FD_ZERO(&m_current_sockets);
-//					FD_SET(m_serverSocketFD, &m_current_sockets);*/
-//
-//					//copy because select is destructive
-//					//m_ready_sockets = m_current_sockets;
-//
-//
-//					std::cout << "Waiting for select" << std::endl;
-//					//select_res = select(FD_SETSIZE, &m_ready_sockets, NULL, NULL, &timeout);
-//					//select_res = select(FD_SETSIZE, &m_current_sockets, NULL, NULL, NULL);
-//					std::cout << "select_res:" << select_res << "\n" << std::endl;
-//
-//					switch (select_res) {
-//						case 0:
-//							//Timeout case
-//							break;
-//
-//						case -1:
-//							//Error case
-//							break;
-//
-//						default:
-//							//Original plan was to use 1 thread for receiving new connections and data from
-//							//  existing connections. Hence, FDSETs were needed.
-//							//
-//							//New plan is to have 1 thread listen for new connections and a different receive
-//							//  so FDSETs may be put on hold for a bit
-//							for (int i = 0; i < FD_SETSIZE; i++) {
-//								//if (FD_ISSET(i, &m_ready_sockets)) {
-//								if (FD_ISSET(i, &m_current_sockets)) {
-//									if (i == m_serverSocketFD) {
-//										////New connection to accept
-//										//new_connection = acceptIncomingConnection(m_serverSocketFD);
-//										//m_client_list.insert(new_connection);
-//										//FD_SET(new_connection->m_socketFD, &m_current_sockets);
-//										//FD_CLR(i, &m_current_sockets);
-//									}
-//									else {
-//										//General client communication
-//
-//										std::cout << "set socket found\n\n" << std::endl;
-//										AcceptedSocket* clientSocket = acceptIncomingConnection(m_serverSocketFD);
-//										char buffer[1024];
-//										int amount_received = recv(clientSocket->m_socketFD, buffer, 1024, 0);
-//
-//										if (amount_received > 0) {
-//											buffer[amount_received] = 0;
-//											std::cout << buffer << "\n" << std::endl;
-//										}
-//										FD_CLR(i, &m_current_sockets);
-//									}
-//								}
-//							}
-//							break;
-//					}
-//				}
-//				break;
-//			
-//			case work:
-//
-//				break;
-//		}
-//	}
-//
+
+	while (true) {
+		switch (*role) {
+			case listen_incoming_data:
+				
+				break;
+
+			case work:
+
+				break;
+		}
+	}
+
 	return NULL;
 }
 
@@ -413,21 +342,18 @@ int SocketServer::addToQueue(JSON task) {
 		m_queue_control_mutex,    // handle to mutex
 		INFINITE);  // no time-out interval
 
-	switch (dwWaitResult)
-	{
+	switch (dwWaitResult) {
 		// The thread has ownership of the mutex
 		case WAIT_OBJECT_0:
 			m_work_queue.push(task);
 
 			// Release ownership of the mutex object
-			if (!ReleaseMutex(m_queue_control_mutex))
-			{
+			if (!ReleaseMutex(m_queue_control_mutex)) {
 				std::cout << "Mutex was not released properly." << std::endl;
 			}
 			break;
 
 			// The thread got ownership of an abandoned mutex
-			// The database is in an indeterminate state
 		case WAIT_ABANDONED:
 			return FALSE;
 	}
@@ -444,25 +370,22 @@ JSON SocketServer::takeFromQueue() {
 		m_queue_control_mutex,    // handle to mutex
 		INFINITE);  // no time-out interval
 
-	switch (dwWaitResult)
-	{
+	switch (dwWaitResult) {
 		// The thread has ownership of the mutex
-	case WAIT_OBJECT_0:
-		//Remove task to the queue
-		ret = m_work_queue.front();
-		m_work_queue.pop();
+		case WAIT_OBJECT_0:
+			//Remove task to the queue
+			ret = m_work_queue.front();
+			m_work_queue.pop();
 
-		// Release ownership of the mutex object
-		if (!ReleaseMutex(m_queue_control_mutex))
-		{
-			std::cout << "Mutex was not released properly." << std::endl;
-		}
-		break;
+			// Release ownership of the mutex object
+			if (!ReleaseMutex(m_queue_control_mutex)) {
+				std::cout << "Mutex was not released properly." << std::endl;
+			}
+			break;
 
-		// The thread got ownership of an abandoned mutex
-		// The database is in an indeterminate state
-	case WAIT_ABANDONED:
-		return FALSE;
+			// The thread got ownership of an abandoned mutex
+		case WAIT_ABANDONED:
+			return FALSE;
 	}
 
 	return ret;
@@ -490,8 +413,14 @@ void SocketServer::setupServerSocketFD() {
 
 	// Allow socket descriptor to be reusable
 	int on = 1;
-	int rc = setsockopt(m_serverSocketFD, SOL_SOCKET, SO_REUSEADDR,
-		(const char*)&on, sizeof(on));
+	int rc = setsockopt(
+		m_serverSocketFD,
+		SOL_SOCKET,
+		SO_REUSEADDR,
+		(const char*)&on,
+		sizeof(on)
+	);
+
 	if (rc < 0) {
 		perror("setsockopt() failed");
 		closesocket(m_serverSocketFD);
@@ -510,10 +439,6 @@ void SocketServer::setupServerSocketFD() {
 	}
 }
 
-std::string SocketServer::pfdReadExistingConnection(int index) {
-
-	return "asdf";
-}
 
 void SocketServer::compressFDArray() {
 	for (int current_fd = 0; current_fd < nfds; current_fd++) {
@@ -529,6 +454,7 @@ void SocketServer::compressFDArray() {
 	}
 }
 
+
 void SocketServer::closeAllSockets() {
 	for (int current_fd = 0; current_fd < nfds; current_fd++) {
 		if (fds[current_fd].fd >= 0)
@@ -537,15 +463,15 @@ void SocketServer::closeAllSockets() {
 }
 
 
-DWORD WINAPI SocketServer::setCompressFDArrayTrue() {
-	DWORD dwWaitResult = WaitForSingleObject(m_mutex_compress_fd_array, INFINITE);
+bool SocketServer::setCompressFDArrayTrue() {
+	DWORD dwWaitResult = WaitForSingleObject(m_mutex_compress_flag, INFINITE);
 	switch (dwWaitResult) {
 		// The thread got ownership of the mutex
 		case WAIT_OBJECT_0:
 			m_compress_fd_array = true;
 			// Release ownership of the mutex object
-			if (!ReleaseMutex(m_mutex_compress_fd_array)) {
-				printf("Error releasing mutex for m_mutex_compress_fd_array");
+			if (!ReleaseMutex(m_mutex_compress_flag)) {
+				printf("Error releasing mutex for m_mutex_compress_flag");
 				exit(-1);
 			}
 			break;
@@ -557,22 +483,50 @@ DWORD WINAPI SocketServer::setCompressFDArrayTrue() {
 	return true;
 }
 
-DWORD WINAPI SocketServer::setCompressFDArrayFalse() {
-	DWORD dwWaitResult = WaitForSingleObject(m_mutex_compress_fd_array, INFINITE);
+
+bool SocketServer::setCompressFDArrayFalse() {
+	DWORD dwWaitResult = WaitForSingleObject(m_mutex_compress_flag, INFINITE);
 	switch (dwWaitResult) {
 		// The thread got ownership of the mutex
 	case WAIT_OBJECT_0:
 		m_compress_fd_array = false;
 		// Release ownership of the mutex object
-		if (!ReleaseMutex(m_mutex_compress_fd_array)) {
-			printf("Error releasing mutex for m_mutex_compress_fd_array");
+		if (!ReleaseMutex(m_mutex_compress_flag)) {
+			printf("Error releasing mutex for m_mutex_compress_flag");
 			exit(-1);
 		}
 		break;
 
-		// The thread got ownership of an abandoned mutex
+	// The thread got ownership of an abandoned mutex
 	case WAIT_ABANDONED:
 		return FALSE;
 	}
 	return true;
+}
+
+
+bool SocketServer::closeConnectionFDArray(int current_fd) {
+	DWORD dwWaitResult = WaitForSingleObject(m_mutex_fd_array, INFINITE);
+	switch (dwWaitResult) {
+		// The thread got ownership of the mutex
+		case WAIT_OBJECT_0:
+			m_compress_fd_array = false;
+			
+			closesocket(fds[current_fd].fd);
+			fds[current_fd].fd = -1;
+			fds[current_fd].events = 0;
+			fds[current_fd].revents = 0;
+			setCompressFDArrayTrue();
+			
+			// Release ownership of the mutex object
+			if (!ReleaseMutex(m_mutex_fd_array)) {
+				printf("Error releasing mutex for m_mutex_fd_array");
+				exit(-1);
+			}
+			break;
+
+		// The thread got ownership of an abandoned mutex
+		case WAIT_ABANDONED:
+			return FALSE;
+	}
 }

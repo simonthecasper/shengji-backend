@@ -7,15 +7,17 @@
 #include <memory>
 
 #define MAX_THREADS		2
+
 #define HEADER_SIZE		64
 #define CLIENT_CLOSED	2
 #define FD_ARRAY_SIZE	200
+#define LISTEN_BACKLOG	32
 
 class SocketServer;
 
 enum ThreadRoleEnum { listen_incoming_data, work };
 
-enum SocketReadState { awaiting_header, awaiting_message };
+enum SocketReadState { awaiting_header, awaiting_body };
 
 struct ThreadRoleStruct {
 	SocketServer* server;
@@ -44,7 +46,8 @@ private:
 	enum SocketReadState	fd_read_state[FD_ARRAY_SIZE];
 	int						fd_message_size[FD_ARRAY_SIZE];
 	bool					m_compress_fd_array;
-	HANDLE					m_mutex_compress_fd_array;
+	HANDLE					m_mutex_compress_flag;
+	HANDLE					m_mutex_fd_array;
 
 	//Session handling
 	std::unordered_set<AcceptedSocket*> m_client_list;
@@ -54,9 +57,9 @@ public:
 
 	void initServer();
 
+	void initMutex();
 
-	void pollTest();
-
+	void pollSocketArray();
 
 	int initThreads();
 
@@ -82,19 +85,26 @@ public:
 
 	void printIP();
 
-
 	//Creates a socket for the server and configures it for Polling
 	void setupServerSocketFD();
 
-	std::string pfdReadExistingConnection(int fds_index);
+	
 
 	void compressFDArray();
 
 	void closeAllSockets();
 
+	int waitForPoll(int timeout);
+
 	void pollAcceptNewConnections();
 
-	DWORD WINAPI setCompressFDArrayTrue();
+	std::string pollReceiveMessageHeader(int index);
 
-	DWORD WINAPI setCompressFDArrayFalse();
+	std::string pollReceiveMessageBody(int current_fd);
+
+	bool setCompressFDArrayTrue();
+
+	bool setCompressFDArrayFalse();
+
+	bool closeConnectionFDArray(int current_fd);
 };
