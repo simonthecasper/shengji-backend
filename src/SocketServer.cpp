@@ -10,9 +10,7 @@ SocketServer::SocketServer() {
 	printIP();
 	
 	initMutex();
-	pollSocketArray();
-
-	//initThreads();
+	initThreads();
 }
 
 
@@ -115,6 +113,7 @@ void SocketServer::pollSocketArray() {
 	int		listen_result = listen(m_serverSocketFD, LISTEN_BACKLOG);
 	check(listen_result, "poll listen");
 
+	// Set index 0 to be the serverSocketFD
 	memset(fds, 0, sizeof(fds));
 	fds[0].fd = m_serverSocketFD;
 	fds[0].events = POLLIN;
@@ -125,12 +124,10 @@ void SocketServer::pollSocketArray() {
 
 	int		current_fd;
 	bool	close_conn;
-	char	header_buffer[HEADER_SIZE];
-
 	do {
-		int poll_result = waitForPoll(timeout);
+		int poll_result = waitForPoll(timeout); //blocks until poll returns
 
-		// One or more descriptors are readable
+
 		int current_size = nfds;
 		for (current_fd = 0; current_fd < current_size; current_fd++) {
 			close_conn = false;
@@ -157,32 +154,40 @@ void SocketServer::pollSocketArray() {
 				pollAcceptNewConnections();
 			}
 
-			// This is not the listening socket, therefore an
-			// existing connection must be readable
+			// Not the listening socket, an existing connection is readable
 			else {
 				std::string message_string;
 
-				switch (fd_read_state[current_fd]) {
+				enum SocketReadState state = fd_read_state[current_fd];
+				switch (state) {
 					case awaiting_header:
+						//std::cout << "receiving header" << std::endl;
 						message_string = pollReceiveMessageHeader(current_fd);
 						break;
 
 					case awaiting_body:
+						//std::cout << "receiving body" << std::endl;
 						message_string = pollReceiveMessageBody(current_fd);
-						break;
+						break; 
 				}
-
 				//continue case
 				if (message_string.compare("continue") == 0) { continue; }
 				
 				//Print message
-				else { std::cout << message_string << std::endl; }
+				//else { std::cout << message_string << std::endl; }
 
+				JSON messagejson = JSON::parse(message_string);
 
+				if (state == awaiting_header) {
+					//std::cout << jsontest.at("message_size") << std::endl;
+				} else {
+					//std::cout << jsontest.at("username") << std::endl;
+					//std::cout << jsontest.at("message") << std::endl;
+					addToQueue(messagejson);
+				}
 
 			}  // End of existing connection is readable
 		} // End of loop through pollable descriptors
-
 
 		// If the close_conn flag was turned on, we to clean up this active connection.
 		if (close_conn) { closeConnectionFDArray(current_fd); }
@@ -233,8 +238,7 @@ int SocketServer::initThreads() {
 			0,
 			&dwThreadIDArray[i]);
 
-		if (hThreadArray[i] == NULL)
-		{
+		if (hThreadArray[i] == NULL) {
 			printf("CreateThread error: %d\n", GetLastError());
 			return 1;
 		}
@@ -318,19 +322,25 @@ DWORD WINAPI SocketServer::staticThreadFunction(void* param) {
 
 
 DWORD WINAPI SocketServer::threadFunction(ThreadRoleEnum* role) {
-
 	while (true) {
 		switch (*role) {
 			case listen_incoming_data:
-				
+				pollSocketArray();
 				break;
 
 			case work:
+				//Mutexes here do not stop a thread from removing from queue when the queue is empty
 
+				JSON removed = getWorkFromQueue();
+
+				if (removed != NULL) {
+					std::cout << "username:" << removed.at("username") << std::endl;
+					std::cout << "message:" << removed.at("message") << "\n" << std::endl;
+					std::cout << "message thread ID" << GetCurrentThreadId() << std::endl;
+				}
 				break;
 		}
 	}
-
 	return NULL;
 }
 
@@ -353,16 +363,16 @@ int SocketServer::addToQueue(JSON task) {
 			}
 			break;
 
-			// The thread got ownership of an abandoned mutex
+		// The thread got ownership of an abandoned mutex
 		case WAIT_ABANDONED:
-			return FALSE;
+			return -1;
 	}
 
 	return 0;
 }
 
 
-JSON SocketServer::takeFromQueue() {
+JSON SocketServer::removeFromQueue() {
 	DWORD dwWaitResult;
 	JSON ret;
 
@@ -374,6 +384,7 @@ JSON SocketServer::takeFromQueue() {
 		// The thread has ownership of the mutex
 		case WAIT_OBJECT_0:
 			//Remove task to the queue
+			std::cout << "remove queue thread:" << GetCurrentThreadId() << std::endl;
 			ret = m_work_queue.front();
 			m_work_queue.pop();
 
@@ -387,6 +398,37 @@ JSON SocketServer::takeFromQueue() {
 		case WAIT_ABANDONED:
 			return FALSE;
 	}
+	std::cout << "remove queue thread end:" << GetCurrentThreadId() << std::endl;
+	return ret;
+}
+
+
+JSON SocketServer::getWorkFromQueue() {
+	DWORD dwWaitResult;
+	JSON ret = NULL;
+
+	dwWaitResult = WaitForSingleObject(
+		m_queue_control_mutex,    // handle to mutex
+		INFINITE);  // no time-out interval
+
+	switch (dwWaitResult) {
+		// The thread has ownership of the mutex
+		case WAIT_OBJECT_0:
+			if (m_work_queue.size() != 0) {
+				ret = m_work_queue.front();
+				m_work_queue.pop();
+			}
+
+			// Release ownership of the mutex object
+			if (!ReleaseMutex(m_queue_control_mutex))
+				std::cout << "Mutex was not released properly at getWorkQueueLength." << std::endl;
+
+			break;
+
+			// The thread got ownership of an abandoned mutex
+		case WAIT_ABANDONED:
+			return FALSE;
+		}
 
 	return ret;
 }

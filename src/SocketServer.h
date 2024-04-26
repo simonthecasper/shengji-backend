@@ -6,7 +6,7 @@
 #include <mutex>
 #include <memory>
 
-#define MAX_THREADS		2
+#define MAX_THREADS		3
 
 #define HEADER_SIZE		64
 #define CLIENT_CLOSED	2
@@ -16,7 +16,6 @@
 class SocketServer;
 
 enum ThreadRoleEnum { listen_incoming_data, work };
-
 enum SocketReadState { awaiting_header, awaiting_body };
 
 struct ThreadRoleStruct {
@@ -79,7 +78,9 @@ public:
 
 	int addToQueue(JSON task);
 
-	JSON takeFromQueue();
+	JSON removeFromQueue();
+
+	JSON getWorkFromQueue();
 
 	void check(int input, std::string instance);
 
@@ -87,8 +88,6 @@ public:
 
 	//Creates a socket for the server and configures it for Polling
 	void setupServerSocketFD();
-
-	
 
 	void compressFDArray();
 
