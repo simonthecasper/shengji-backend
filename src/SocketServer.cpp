@@ -118,6 +118,10 @@ void SocketServer::pollSocketArray() {
 				printf(">>Index %d Connection closed by revents\n", current_fd);
 				close_conn = true;
 				break;
+			} else if (m_pollfd_array[current_fd].revents == CLIENT_CLOSED_PY) {
+				printf(">>Index %d Connection closed by revents (py)\n", current_fd);
+				close_conn = true;
+				break;
 			}
 
 			// If revents is not "Read ready", it's an unexpected result
@@ -157,6 +161,7 @@ void SocketServer::pollSocketArray() {
 				//else { std::cout << message_string << std::endl; }
 
 				JSON messagejson = JSON::parse(message_string);
+				messagejson["source_fd"] = m_pollfd_array[current_fd].fd;
 
 				if (state == awaiting_header) {
 					//std::cout << jsontest.at("message_size") << std::endl;
@@ -166,7 +171,6 @@ void SocketServer::pollSocketArray() {
 					//std::cout << jsontest.at("message") << std::endl;
 					addToQueue(messagejson);
 				}
-
 			}  // End of existing connection is readable
 		} // End of loop through pollable descriptors
 
@@ -183,6 +187,21 @@ void SocketServer::pollSocketArray() {
 
 	// Clean up all of the sockets that are open
 	closeAllSockets();
+}
+
+int SocketServer::waitForPoll(int timeout) {
+	int poll_result = WSAPoll(m_pollfd_array, m_nfds, timeout);
+
+	if (poll_result == SOCKET_ERROR) { //Socket error case
+		perror("  poll() failed with SOCKET_ERROR. Ending program.\n");
+		exit(-1);
+	}
+	else if (poll_result == 0) { //timeout case
+		printf("  poll() timed out. End program.\n");
+		exit(-1);
+	}
+
+	return poll_result;
 }
 
 void SocketServer::pollAcceptNewConnections() {
@@ -272,20 +291,6 @@ std::string SocketServer::pollReceiveMessageBody(int current_fd) {
 	m_fd_message_size[current_fd] = -1;  //set to a default value
 
 	return message_string;
-}
-
-int SocketServer::waitForPoll(int timeout) {
-	int poll_result = WSAPoll(m_pollfd_array, m_nfds, timeout);
-
-	if (poll_result == SOCKET_ERROR) { //Socket error case
-		perror("  poll() failed with SOCKET_ERROR. Ending program.\n");
-		exit(-1);
-	} else if (poll_result == 0) { //timeout case
-		printf("  poll() timed out. End program.\n");
-		exit(-1);
-	}
-
-	return poll_result;
 }
 
 struct sockaddr_in* SocketServer::createIPv4Address(std::string ip, int port) {
@@ -395,6 +400,27 @@ void SocketServer::closeAllSockets() {
 	}
 }
 
+int SocketServer::sendThroughSocket(SOCKET destination, std::string message_str) {
+	const char* message_char = message_str.c_str();
+	int send_result = send(destination, message_char, (int)strlen(message_char), 0);
+
+	if (send_result == SOCKET_ERROR) {
+		std::cout << "Error sending message to socket " << destination << "." << std::endl;
+		return -1;
+	}
+
+	return 0;
+}
+
+void SocketServer::testSendToAllOthers(SOCKET source, std::string message) {
+	for (int i = 0; i < m_nfds; i++) {
+		SOCKET dest = m_pollfd_array[i].fd;
+		if (dest != source && dest != m_serverSocketFD) {
+			int send_result = sendThroughSocket(dest, message);
+		}
+	}
+}
+
 
 /*-------------------------------------------*/
 /*        Multithreading / ThreadPool        */
@@ -457,6 +483,12 @@ DWORD WINAPI SocketServer::threadFunction(ThreadRoleEnum* role) {
 					std::cout << "username:" << removed.at("username") << std::endl;
 					std::cout << "message:" << removed.at("message") << std::endl;
 					std::cout << "message thread ID" << GetCurrentThreadId() << "\n" << std::endl;
+
+
+					std::string username(removed.at("username"));
+					std::string message_contents(removed.at("message"));
+					std::string testmessage = "\n" + username + ":" + message_contents;
+					testSendToAllOthers(removed.at("source_fd"), testmessage);
 				}
 				break;
 		}

@@ -11,6 +11,7 @@
 
 #define HEADER_SIZE		64
 #define CLIENT_CLOSED	2
+#define CLIENT_CLOSED_PY 3
 #define FD_ARRAY_SIZE	200
 #define LISTEN_BACKLOG	32
 
@@ -52,8 +53,7 @@ private:
 	HANDLE					m_mutex_compress_flag;
 	HANDLE					m_mutex_fd_array;
 
-	// Session handling
-	std::unordered_set<AcceptedSocket*> m_client_list;
+
 
 public:
 	SocketServer();
@@ -79,6 +79,10 @@ private:
 	/*-------------------------------------------*/
 	void pollSocketArray();
 
+	// Calls WSAPoll with the provided timeout value and returns the poll result.
+	//   Exits the program if poll fails.
+	int waitForPoll(int timeout);
+
 	// Adds new socket connections as detected by poll to the FD array
 	void pollAcceptNewConnections();
 
@@ -91,25 +95,29 @@ private:
 	// Receives an available message body from the provided socket FD
 	std::string pollReceiveMessageBody(int current_fd);
 
-	// Calls WSAPoll with the provided timeout value and returns the poll result.
-	//   Exits the program if poll fails.
-	int waitForPoll(int timeout);
-
 	struct sockaddr_in* createIPv4Address(std::string ip, int port);
 	
+	// Creates and returns a socketFD
 	SOCKET createTCPIPv4Socket();
 
 	// Removes unused index spaces in the FD array after connections are closed
 	void compressFDArray();
 
+	// Thread safe function that sets the compressFDArray flag to true
 	bool setCompressFDArrayTrue();
 
+	// Thread safe function that sets the compressFDArray flag to false
 	bool setCompressFDArrayFalse();
 
+	// Closes the socket connection to the socket in the provided index
 	bool closeConnectionFDArray(int current_fd);
 
 	// Closes all open sockets in the socket FD array
 	void closeAllSockets();
+
+	int sendThroughSocket(SOCKET destination, std::string message);
+
+	void testSendToAllOthers(SOCKET source, std::string message);
 
 	/*-------------------------------------------*/
 	/*        Multithreading / ThreadPool        */
