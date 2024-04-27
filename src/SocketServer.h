@@ -44,10 +44,10 @@ private:
 	HANDLE					m_queue_control_mutex;
 
 	// Polling
-	int						nfds;
-	struct pollfd			fds[FD_ARRAY_SIZE];
-	enum SocketReadState	fd_read_state[FD_ARRAY_SIZE];
-	int						fd_message_size[FD_ARRAY_SIZE];
+	int						m_nfds;
+	struct pollfd			m_pollfd_array[FD_ARRAY_SIZE];
+	enum SocketReadState	m_fd_read_state[FD_ARRAY_SIZE];
+	int						m_fd_message_size[FD_ARRAY_SIZE];
 	bool					m_compress_fd_array;
 	HANDLE					m_mutex_compress_flag;
 	HANDLE					m_mutex_fd_array;
@@ -59,11 +59,9 @@ public:
 	SocketServer();
 
 private:
-
 	/*-------------------------------------------*/
 	/*                  Basics                   */
 	/*-------------------------------------------*/
-
 	void initServer();
 
 	//Creates a socket for the server and configures it for Polling
@@ -71,6 +69,10 @@ private:
 
 	//Initializes all mutexes (change later??)
 	void initMutex();
+
+	void check(int input, std::string instance);
+
+	void printIP();
 
 	/*-------------------------------------------*/
 	/*        Poll and Socket Connections        */
@@ -118,23 +120,9 @@ private:
 
 	DWORD WINAPI threadFunction(ThreadRoleEnum* param);
 
-
+	//Thread safe function that adds a task to the work queue
 	int addToQueue(JSON task);
 
 	//Thread safe function that retrieves a task from the work queue if available
 	JSON getWorkFromQueue();
-
-
-
-	void check(int input, std::string instance);
-
-	void printIP();
-
-	
-	
-
-	
-
-	
-	
 };

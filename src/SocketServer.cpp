@@ -94,10 +94,10 @@ void SocketServer::pollSocketArray() {
 	check(listen_result, "poll listen");
 
 	// Set index 0 to be the serverSocketFD
-	memset(fds, 0, sizeof(fds));
-	fds[0].fd = m_serverSocketFD;
-	fds[0].events = POLLIN;
-	nfds = 1;
+	memset(m_pollfd_array, 0, sizeof(m_pollfd_array));
+	m_pollfd_array[0].fd = m_serverSocketFD;
+	m_pollfd_array[0].events = POLLIN;
+	m_nfds = 1;
 
 	int		timeout = -1;
 	//timeout = (3 * 60 * 1000);
@@ -108,13 +108,13 @@ void SocketServer::pollSocketArray() {
 		int poll_result = waitForPoll(timeout); //blocks until poll returns
 
 
-		int current_size = nfds;
+		int current_size = m_nfds;
 		for (current_fd = 0; current_fd < current_size; current_fd++) {
 			close_conn = false;
 
-			if (fds[current_fd].revents == 0) continue;
+			if (m_pollfd_array[current_fd].revents == 0) continue;
 
-			if (fds[current_fd].revents == CLIENT_CLOSED) {
+			if (m_pollfd_array[current_fd].revents == CLIENT_CLOSED) {
 				printf(">>Index %d Connection closed by revents\n", current_fd);
 				close_conn = true;
 				break;
@@ -122,14 +122,14 @@ void SocketServer::pollSocketArray() {
 
 			// If revents is not "Read ready", it's an unexpected result
 			// log and end the server.
-			if ((fds[current_fd].revents & POLLIN) == 0) {
+			if ((m_pollfd_array[current_fd].revents & POLLIN) == 0) {
 				printf(">>revents is not a \"Read available\" value\n");
-				printf(">>revents = %d\n\n", fds[current_fd].revents);
+				printf(">>revents = %d\n\n", m_pollfd_array[current_fd].revents);
 				break;
 			}
 
 			// ServerSocketFD is readable. A new connection is available to be made.
-			if (fds[current_fd].fd == m_serverSocketFD) {
+			if (m_pollfd_array[current_fd].fd == m_serverSocketFD) {
 				printf(">>Server socket is readable. New connection pending...\n");
 				pollAcceptNewConnections();
 			}
@@ -138,7 +138,7 @@ void SocketServer::pollSocketArray() {
 			else {
 				std::string message_string;
 
-				enum SocketReadState state = fd_read_state[current_fd];
+				enum SocketReadState state = m_fd_read_state[current_fd];
 				switch (state) {
 				case awaiting_header:
 					//std::cout << "receiving header" << std::endl;
@@ -195,9 +195,9 @@ void SocketServer::pollAcceptNewConnections() {
 		SOCKET new_sd = new_connection->m_socketFD;
 
 		std::cout << ">>New incoming connection : " << new_sd << "\n" << std::endl;
-		fds[nfds].fd = new_sd;
-		fds[nfds].events = POLLIN;
-		nfds++;
+		m_pollfd_array[m_nfds].fd = new_sd;
+		m_pollfd_array[m_nfds].events = POLLIN;
+		m_nfds++;
 	} while (true);
 }
 
@@ -226,7 +226,7 @@ AcceptedSocket* SocketServer::acceptIncomingConnection(SOCKET serverSocketFD) {
 std::string SocketServer::pollReceiveMessageHeader(int index) {
 	char header_buffer[HEADER_SIZE];
 	memset(&header_buffer, 0, sizeof(header_buffer));
-	int header_rc = recv(fds[index].fd, header_buffer, sizeof(header_buffer), 0);
+	int header_rc = recv(m_pollfd_array[index].fd, header_buffer, sizeof(header_buffer), 0);
 
 	if (header_rc < 0)  return "continue";
 
@@ -239,43 +239,43 @@ std::string SocketServer::pollReceiveMessageHeader(int index) {
 	JSON header_json = JSON::parse(header_string);
 
 	int message_size = header_json.at("message_size");
-	fd_message_size[index] = message_size;
-	fd_read_state[index] = awaiting_body;
+	m_fd_message_size[index] = message_size;
+	m_fd_read_state[index] = awaiting_body;
 
 	return header_string;
 }
 
 std::string SocketServer::pollReceiveMessageBody(int current_fd) {
-	if (fd_message_size[current_fd] < 1) {
+	if (m_fd_message_size[current_fd] < 1) {
 		printf(">>ERROR:Expected message size is not a valid value\n");
-		fd_read_state[current_fd] = awaiting_header;
-		fd_message_size[current_fd] = -1;
+		m_fd_read_state[current_fd] = awaiting_header;
+		m_fd_message_size[current_fd] = -1;
 		return "continue";
 	}
 
-	int message_size = fd_message_size[current_fd];
+	int message_size = m_fd_message_size[current_fd];
 	std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
 
 	//Receive message
-	int message_rc = recv(fds[current_fd].fd, message_buffer.get(), message_size, 0);
+	int message_rc = recv(m_pollfd_array[current_fd].fd, message_buffer.get(), message_size, 0);
 
 	if (message_rc < 0) {
 		printf(">>ERROR:Nothing was available to read\n");
-		fd_read_state[current_fd] = awaiting_header;
-		fd_message_size[current_fd] = -1;
+		m_fd_read_state[current_fd] = awaiting_header;
+		m_fd_message_size[current_fd] = -1;
 		return "continue";
 	}
 	std::string message_string(message_buffer.get());
 	//std::cout << "Message:" << message_string << "\n" << std::endl;
 
-	fd_read_state[current_fd] = awaiting_header;
-	fd_message_size[current_fd] = -1;  //set to a default value
+	m_fd_read_state[current_fd] = awaiting_header;
+	m_fd_message_size[current_fd] = -1;  //set to a default value
 
 	return message_string;
 }
 
 int SocketServer::waitForPoll(int timeout) {
-	int poll_result = WSAPoll(fds, nfds, timeout);
+	int poll_result = WSAPoll(m_pollfd_array, m_nfds, timeout);
 
 	if (poll_result == SOCKET_ERROR) { //Socket error case
 		perror("  poll() failed with SOCKET_ERROR. Ending program.\n");
@@ -309,15 +309,15 @@ SOCKET SocketServer::createTCPIPv4Socket() {
 }
 
 void SocketServer::compressFDArray() {
-	for (int current_fd = 0; current_fd < nfds; current_fd++) {
-		if (fds[current_fd].fd == -1) {
-			for (int compress_index = current_fd; compress_index < nfds - 1; compress_index++) {
-				fds[compress_index] = fds[compress_index + 1];
-				fd_read_state[compress_index] = fd_read_state[compress_index + 1];
-				fd_message_size[compress_index] = fd_message_size[compress_index + 1];
+	for (int current_fd = 0; current_fd < m_nfds; current_fd++) {
+		if (m_pollfd_array[current_fd].fd == -1) {
+			for (int compress_index = current_fd; compress_index < m_nfds - 1; compress_index++) {
+				m_pollfd_array[compress_index] = m_pollfd_array[compress_index + 1];
+				m_fd_read_state[compress_index] = m_fd_read_state[compress_index + 1];
+				m_fd_message_size[compress_index] = m_fd_message_size[compress_index + 1];
 			}
 			current_fd--;
-			nfds--;
+			m_nfds--;
 		}
 	}
 }
@@ -369,10 +369,10 @@ bool SocketServer::closeConnectionFDArray(int current_fd) {
 	case WAIT_OBJECT_0:
 		m_compress_fd_array = false;
 
-		closesocket(fds[current_fd].fd);
-		fds[current_fd].fd = -1;
-		fds[current_fd].events = 0;
-		fds[current_fd].revents = 0;
+		closesocket(m_pollfd_array[current_fd].fd);
+		m_pollfd_array[current_fd].fd = -1;
+		m_pollfd_array[current_fd].events = 0;
+		m_pollfd_array[current_fd].revents = 0;
 		setCompressFDArrayTrue();
 
 		// Release ownership of the mutex object
@@ -389,9 +389,9 @@ bool SocketServer::closeConnectionFDArray(int current_fd) {
 }
 
 void SocketServer::closeAllSockets() {
-	for (int current_fd = 0; current_fd < nfds; current_fd++) {
-		if (fds[current_fd].fd >= 0)
-			closesocket(fds[current_fd].fd);
+	for (int current_fd = 0; current_fd < m_nfds; current_fd++) {
+		if (m_pollfd_array[current_fd].fd >= 0)
+			closesocket(m_pollfd_array[current_fd].fd);
 	}
 }
 
