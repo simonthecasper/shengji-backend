@@ -6,6 +6,7 @@
 #include <mutex>
 #include <memory>
 
+
 #define MAX_THREADS		3
 
 #define HEADER_SIZE		64
@@ -18,7 +19,10 @@ class SocketServer;
 enum ThreadRoleEnum { listen_incoming_data, work };
 enum SocketReadState { awaiting_header, awaiting_body };
 
+
 struct ThreadRoleStruct {
+	//this self referential server field is needed to find the thread function
+	//since we have the static thread function wrapper
 	SocketServer* server;
 	ThreadRoleEnum role;
 };
@@ -28,18 +32,18 @@ class SocketServer
 {
 
 private:
-	//Server IP
+	// Server IP
 	SOCKET					m_serverSocketFD;
 	struct sockaddr_in*		m_serverAddress;
 
-	//Multithreading
+	// Multithreading/ThreadPool
 	DWORD					dwThreadIDArray[MAX_THREADS];
 	HANDLE					hThreadArray[MAX_THREADS];
 	ThreadRoleStruct		ThreadRoleArray[MAX_THREADS];
 	std::queue<JSON>		m_work_queue;
 	HANDLE					m_queue_control_mutex;
 
-	//Polling
+	// Polling
 	int						nfds;
 	struct pollfd			fds[FD_ARRAY_SIZE];
 	enum SocketReadState	fd_read_state[FD_ARRAY_SIZE];
@@ -48,62 +52,89 @@ private:
 	HANDLE					m_mutex_compress_flag;
 	HANDLE					m_mutex_fd_array;
 
-	//Session handling
+	// Session handling
 	std::unordered_set<AcceptedSocket*> m_client_list;
 
 public:
 	SocketServer();
 
+private:
+
+	/*-------------------------------------------*/
+	/*                  Basics                   */
+	/*-------------------------------------------*/
+
 	void initServer();
-
-	void initMutex();
-
-	void pollSocketArray();
-
-	int initThreads();
-
-	void initFDSet();
-
-	struct sockaddr_in* createIPv4Address(std::string ip, int port);
-	
-	SOCKET createTCPIPv4Socket();
-	
-	AcceptedSocket* acceptIncomingConnection(SOCKET serverSocketFD);
-
-	void listenAndAcceptIncomingConnection(int serverSocketFD);
-
-	static DWORD WINAPI staticThreadFunction(void* param);
-
-	DWORD WINAPI threadFunction(ThreadRoleEnum* param);
-
-	int addToQueue(JSON task);
-
-	JSON removeFromQueue();
-
-	JSON getWorkFromQueue();
-
-	void check(int input, std::string instance);
-
-	void printIP();
 
 	//Creates a socket for the server and configures it for Polling
 	void setupServerSocketFD();
 
-	void compressFDArray();
+	//Initializes all mutexes (change later??)
+	void initMutex();
 
-	void closeAllSockets();
+	/*-------------------------------------------*/
+	/*        Poll and Socket Connections        */
+	/*-------------------------------------------*/
+	void pollSocketArray();
 
-	int waitForPoll(int timeout);
-
+	// Adds new socket connections as detected by poll to the FD array
 	void pollAcceptNewConnections();
 
+	// Accepts an incoming socket sonnection at the provided socketFD
+	AcceptedSocket* acceptIncomingConnection(SOCKET serverSocketFD);
+
+	// Receives an available message header from the provided socket FD
 	std::string pollReceiveMessageHeader(int index);
 
+	// Receives an available message body from the provided socket FD
 	std::string pollReceiveMessageBody(int current_fd);
+
+	// Calls WSAPoll with the provided timeout value and returns the poll result.
+	//   Exits the program if poll fails.
+	int waitForPoll(int timeout);
+
+	struct sockaddr_in* createIPv4Address(std::string ip, int port);
+	
+	SOCKET createTCPIPv4Socket();
+
+	// Removes unused index spaces in the FD array after connections are closed
+	void compressFDArray();
 
 	bool setCompressFDArrayTrue();
 
 	bool setCompressFDArrayFalse();
 
 	bool closeConnectionFDArray(int current_fd);
+
+	// Closes all open sockets in the socket FD array
+	void closeAllSockets();
+
+	/*-------------------------------------------*/
+	/*        Multithreading / ThreadPool        */
+	/*-------------------------------------------*/
+	int initThreads();
+
+	static DWORD WINAPI staticThreadFunction(void* param);
+
+	DWORD WINAPI threadFunction(ThreadRoleEnum* param);
+
+
+	int addToQueue(JSON task);
+
+	//Thread safe function that retrieves a task from the work queue if available
+	JSON getWorkFromQueue();
+
+
+
+	void check(int input, std::string instance);
+
+	void printIP();
+
+	
+	
+
+	
+
+	
+	
 };
