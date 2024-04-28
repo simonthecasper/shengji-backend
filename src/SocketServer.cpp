@@ -4,7 +4,6 @@
 #define SERVER_PORT 12345
 
 
-
 SocketServer::SocketServer() {
 	std::cout << "in constructor\n" << std::endl;
 	initServer();
@@ -23,7 +22,6 @@ SocketServer::SocketServer() {
 void SocketServer::initServer() {
 	setupServerSocketFD();
 	
-	//m_serverAddress = createIPv4Address("127.0.0.1", SERVER_PORT);
 	m_serverAddress = createIPv4Address(SERVER_IP, SERVER_PORT);
 
 	//Use the global namespace bind for the correct bind function (hence the ::bind)
@@ -75,13 +73,6 @@ void SocketServer::initMutex() {
 	//Create queue control mutex
 	m_queue_control_mutex = CreateMutex(NULL, FALSE, NULL);
 }
-
-//void SocketServer::check(int input, std::string instance) {
-//	if (input == -1) {
-//		std::cout << "Error at " << instance << std::endl;
-//		exit(2);
-//	}
-//}
 
 void SocketServer::printIP() {
 	char buffer[INET_ADDRSTRLEN];
@@ -539,14 +530,12 @@ JSON SocketServer::getWorkFromQueue() {
 			// Release ownership of the mutex object
 			if (!ReleaseMutex(m_queue_control_mutex))
 				std::cout << "Mutex was not released properly at getWorkQueueLength." << std::endl;
-
 			break;
 
 			// The thread got ownership of an abandoned mutex
 		case WAIT_ABANDONED:
 			return FALSE;
 		}
-
 	return ret;
 }
 

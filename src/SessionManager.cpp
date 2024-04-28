@@ -33,10 +33,6 @@ std::string SessionManager::generateSessionID() {
     int length = 4;
 
     // Define the list of possible characters
-    /*const string CHARACTERS
-        = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv"
-        "wxyz0123456789";*/
-
     const string CHARACTERS
         = "abcdefghijklmnopqrstuv";
 
@@ -58,6 +54,7 @@ std::string SessionManager::generateSessionID() {
 
     return random_string;
 }
+
 
 void SessionManager::receiveJSON(JSON message) {
     std::string stage = message.at("stage");

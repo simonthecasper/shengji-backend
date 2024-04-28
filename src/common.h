@@ -28,4 +28,3 @@ namespace common {
 
 	bool stringCompare(std::string s1, std::string s2);
 }
-

@@ -17,7 +17,6 @@
 #define LISTEN_BACKLOG		32
 
 #define SERVER_IP			"192.168.0.77"
-//#define SERVER_IP			"127.0.0.1"
 
 class SocketServer;
 
