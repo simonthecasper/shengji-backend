@@ -2,7 +2,7 @@
 
 #include<iostream>
 #include<string>
-#include <list>
+#include<list>
 #include<unordered_map>
 #include<unordered_set>
 #include<queue>
@@ -16,3 +16,11 @@
 #include "json.hpp"
 
 using JSON = nlohmann::json;
+
+
+namespace common {
+	int sendThroughSocket(SOCKET destination, std::string message_str);
+
+	void check(int input, std::string instance);
+}
+

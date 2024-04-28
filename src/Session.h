@@ -1,10 +1,11 @@
 #pragma once
-#include "Player.h"
+
+//#include "common.h"
 #include "Deck.h"
-#include "json.hpp"
+#include "Player.h"
+#include "Chat.h"
 
-#include <unordered_set>
-
+class SocketServer;
 
 enum MatchState {
 	DRAWING,
@@ -15,36 +16,53 @@ enum MatchState {
 class Session
 {
 private:
+	//SocketServer*			m_server;
+
+	std::string				m_id;
+	Chat*					m_chatlog;
+
+	unordered_set<int>		m_player_ids;
+	unordered_set<SOCKET>	m_player_sockets;
+	list<Player*>			m_player_list;
+	unordered_map<int, SOCKET>
+							m_id_to_socket;
+
 	//administrative fields
-	Deck* m_deck;
-	unordered_set<int> m_player_ids;
-	list<Player*> m_player_list;
-	list<string> m_chatlog;
-	unordered_map<int, Player*> m_teams;
-	unordered_map<int, int> m_match_score;
+	//Deck*					m_deck;
+	//unordered_map<int,Player*>
+	//						m_teams;
+	//unordered_map<int, int>
+	//						m_match_score;
 
 
 	//gametime fields
-	MatchState m_state;
-	int m_player_count;
-	int m_game_score;
-	
-	Player* m_trick_starter;
+	//MatchState			m_state;
+	int					m_player_count;
+	//int					m_game_score;
+	//
+	//Player*				m_trick_starter;
+	//Player*				m_current_player;
+	//Player*				m_next_player;
 
-	Player* m_current_player;
-	Player* m_next_player;
-
-	int m_match_state;
+	//int					m_match_state;
 
 public:
 
-	Session();
+	Session(std::string id);
 
 	void startGame();
 
-	void addToChat(string message);
+	void addToChat(JSON message_json);
 
-	int addPlayer(string name);
+	// Accepts the SocketFD for a new player to add to the session and
+	//   return the ID this player gets assigned.
+	int addPlayer(SOCKET m_player_fd);
 
-	int generateID(); 
+	int generateID();
+
+	int handleJSON(JSON input);
+
+	std::string getID();
+
+	void sendToOtherPlayers(int source_player, JSON message);
 };

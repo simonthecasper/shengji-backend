@@ -1,6 +1,9 @@
 #pragma once
-#include "common.h"
 
+
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#include <string>
 
 
 

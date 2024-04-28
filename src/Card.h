@@ -1,6 +1,6 @@
 #pragma once
-#include <string>
-#include <unordered_map>
+
+#include "common.h"
 
 
 using namespace std;
@@ -21,7 +21,9 @@ private:
     unordered_map<string, int> m_suit_rank;
 
 public:
-       
+    
+    int testfield;
+
     Card();
 
     Card(string suit_con, int rank_con, int id);

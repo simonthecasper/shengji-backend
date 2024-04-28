@@ -1,19 +1,23 @@
 #pragma once
 
-#include "common.h"
+//#include "common.h"
 
 #include "AcceptedSocket.h"
+#include "SessionManager.h"
 #include <mutex>
 #include <memory>
 
 
-#define MAX_THREADS		3
+#define MAX_THREADS			3
 
-#define HEADER_SIZE		64
-#define CLIENT_CLOSED	2
-#define CLIENT_CLOSED_PY 3
-#define FD_ARRAY_SIZE	200
-#define LISTEN_BACKLOG	32
+#define HEADER_SIZE			64
+#define CLIENT_CLOSED		2
+#define CLIENT_CLOSED_PY	3
+#define FD_ARRAY_SIZE		200
+#define LISTEN_BACKLOG		32
+
+#define SERVER_IP			"192.168.0.77"
+//#define SERVER_IP			"127.0.0.1"
 
 class SocketServer;
 
@@ -53,6 +57,8 @@ private:
 	HANDLE					m_mutex_compress_flag;
 	HANDLE					m_mutex_fd_array;
 
+	// Session Managing
+	SessionManager*			m_session_manager;
 
 
 public:
@@ -70,9 +76,10 @@ private:
 	//Initializes all mutexes (change later??)
 	void initMutex();
 
-	void check(int input, std::string instance);
+	//void check(int input, std::string instance);
 
 	void printIP();
+
 
 	/*-------------------------------------------*/
 	/*        Poll and Socket Connections        */
@@ -115,9 +122,12 @@ private:
 	// Closes all open sockets in the socket FD array
 	void closeAllSockets();
 
-	int sendThroughSocket(SOCKET destination, std::string message);
+//public:
+//	int sendThroughSocket(SOCKET destination, std::string message);
 
+private:
 	void testSendToAllOthers(SOCKET source, std::string message);
+
 
 	/*-------------------------------------------*/
 	/*        Multithreading / ThreadPool        */

@@ -1,7 +1,6 @@
 #pragma once
-#include <list>
+
 #include "Card.h"
-#include <cstdlib>
 
 
 class Deck

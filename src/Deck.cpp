@@ -14,7 +14,6 @@ Deck::Deck(int number_of_decks, int rank_omit_count) {
 
 
 void Deck::createDeck(int number_of_decks, int rank_omit_count, bool leaveShengJiGap) {
-	
 	int id = 0;
 	for (int deck = 0; deck < number_of_decks; deck++) {
 		for (string suit : m_suits) {

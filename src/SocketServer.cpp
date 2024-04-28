@@ -4,11 +4,14 @@
 #define SERVER_PORT 12345
 
 
+
 SocketServer::SocketServer() {
 	std::cout << "in constructor\n" << std::endl;
 	initServer();
 	printIP();
 	
+	m_session_manager = new SessionManager();
+
 	initMutex();
 	initThreads();
 }
@@ -21,11 +24,13 @@ void SocketServer::initServer() {
 	setupServerSocketFD();
 	
 	//m_serverAddress = createIPv4Address("127.0.0.1", SERVER_PORT);
-	m_serverAddress = createIPv4Address("192.168.0.77", SERVER_PORT);
+	m_serverAddress = createIPv4Address(SERVER_IP, SERVER_PORT);
 
-	int bind_result = bind(m_serverSocketFD, (struct sockaddr*)m_serverAddress, sizeof(*m_serverAddress));
+	//Use the global namespace bind for the correct bind function (hence the ::bind)
+	int bind_result = ::bind(m_serverSocketFD, (struct sockaddr*)m_serverAddress, sizeof(*m_serverAddress));
+
 	//std::cout << bind_result << "\n" << std::endl;
-	check(bind_result, "Server bind");
+	common::check(bind_result, "Server bind");
 	std::cout << "Server socket bound successfullly\n" << std::endl;
 }
 
@@ -71,12 +76,12 @@ void SocketServer::initMutex() {
 	m_queue_control_mutex = CreateMutex(NULL, FALSE, NULL);
 }
 
-void SocketServer::check(int input, std::string instance) {
-	if (input == -1) {
-		std::cout << "Error at " << instance << std::endl;
-		exit(2);
-	}
-}
+//void SocketServer::check(int input, std::string instance) {
+//	if (input == -1) {
+//		std::cout << "Error at " << instance << std::endl;
+//		exit(2);
+//	}
+//}
 
 void SocketServer::printIP() {
 	char buffer[INET_ADDRSTRLEN];
@@ -91,7 +96,7 @@ void SocketServer::printIP() {
 void SocketServer::pollSocketArray() {
 	// Set the listen back log
 	int		listen_result = listen(m_serverSocketFD, LISTEN_BACKLOG);
-	check(listen_result, "poll listen");
+	common::check(listen_result, "poll listen");
 
 	// Set index 0 to be the serverSocketFD
 	memset(m_pollfd_array, 0, sizeof(m_pollfd_array));
@@ -400,23 +405,23 @@ void SocketServer::closeAllSockets() {
 	}
 }
 
-int SocketServer::sendThroughSocket(SOCKET destination, std::string message_str) {
-	const char* message_char = message_str.c_str();
-	int send_result = send(destination, message_char, (int)strlen(message_char), 0);
-
-	if (send_result == SOCKET_ERROR) {
-		std::cout << "Error sending message to socket " << destination << "." << std::endl;
-		return -1;
-	}
-
-	return 0;
-}
+//int SocketServer::sendThroughSocket(SOCKET destination, std::string message_str) {
+//	const char* message_char = message_str.c_str();
+//	int send_result = send(destination, message_char, (int)strlen(message_char), 0);
+//
+//	if (send_result == SOCKET_ERROR) {
+//		std::cout << "Error sending message to socket " << destination << "." << std::endl;
+//		return -1;
+//	}
+//
+//	return 0;
+//}
 
 void SocketServer::testSendToAllOthers(SOCKET source, std::string message) {
 	for (int i = 0; i < m_nfds; i++) {
 		SOCKET dest = m_pollfd_array[i].fd;
 		if (dest != source && dest != m_serverSocketFD) {
-			int send_result = sendThroughSocket(dest, message);
+			int send_result = common::sendThroughSocket(dest, message);
 		}
 	}
 }
@@ -480,15 +485,16 @@ DWORD WINAPI SocketServer::threadFunction(ThreadRoleEnum* role) {
 				JSON removed = getWorkFromQueue();
 
 				if (removed != NULL) {
-					std::cout << "username:" << removed.at("username") << std::endl;
+					/*std::cout << "username:" << removed.at("username") << std::endl;
 					std::cout << "message:" << removed.at("message") << std::endl;
 					std::cout << "message thread ID" << GetCurrentThreadId() << "\n" << std::endl;
-
 
 					std::string username(removed.at("username"));
 					std::string message_contents(removed.at("message"));
 					std::string testmessage = "\n" + username + ":" + message_contents;
-					testSendToAllOthers(removed.at("source_fd"), testmessage);
+					testSendToAllOthers(removed.at("source_fd"), testmessage);*/
+
+
 				}
 				break;
 		}

@@ -1,12 +1,4 @@
-#include <iostream>
-#include "WinSock2.h"
-#include <list>
-#include "Play.h"
-#include "Deck.h"
 #include "SocketServer.h"
-#include "json.hpp"
-
-using json = nlohmann::json;
 
 
 void deckTesting();
@@ -16,7 +8,6 @@ int main() {
 	
 	serverTesting();
 	//deckTesting();
-	
 	
  	return 0;
 }
