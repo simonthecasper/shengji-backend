@@ -15,7 +15,7 @@ void Session::addToChat(JSON message_json) {
 	std::string message = message_json.at("message");
 	m_chatlog->addToChat(player_id, message);
 
-	//sendToAllOthers(player_id, )
+	sendToOtherPlayers(player_id, message_json);
 }
 
 int Session::addPlayer(SOCKET player_fd) {

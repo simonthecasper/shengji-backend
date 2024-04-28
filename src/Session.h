@@ -50,8 +50,6 @@ public:
 
 	Session(std::string id);
 
-	void startGame();
-
 	void addToChat(JSON message_json);
 
 	// Accepts the SocketFD for a new player to add to the session and

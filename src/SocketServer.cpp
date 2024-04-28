@@ -405,18 +405,6 @@ void SocketServer::closeAllSockets() {
 	}
 }
 
-//int SocketServer::sendThroughSocket(SOCKET destination, std::string message_str) {
-//	const char* message_char = message_str.c_str();
-//	int send_result = send(destination, message_char, (int)strlen(message_char), 0);
-//
-//	if (send_result == SOCKET_ERROR) {
-//		std::cout << "Error sending message to socket " << destination << "." << std::endl;
-//		return -1;
-//	}
-//
-//	return 0;
-//}
-
 void SocketServer::testSendToAllOthers(SOCKET source, std::string message) {
 	for (int i = 0; i < m_nfds; i++) {
 		SOCKET dest = m_pollfd_array[i].fd;
@@ -485,16 +473,20 @@ DWORD WINAPI SocketServer::threadFunction(ThreadRoleEnum* role) {
 				JSON removed = getWorkFromQueue();
 
 				if (removed != NULL) {
-					/*std::cout << "username:" << removed.at("username") << std::endl;
-					std::cout << "message:" << removed.at("message") << std::endl;
-					std::cout << "message thread ID" << GetCurrentThreadId() << "\n" << std::endl;
 
-					std::string username(removed.at("username"));
-					std::string message_contents(removed.at("message"));
-					std::string testmessage = "\n" + username + ":" + message_contents;
-					testSendToAllOthers(removed.at("source_fd"), testmessage);*/
+					if (common::stringCompare(removed.at("stage"), "chat")) {
+						std::cout << "username:" << removed.at("username") << std::endl;
+						std::cout << "message:" << removed.at("message") << std::endl;
+						std::cout << "message thread ID" << GetCurrentThreadId() << "\n" << std::endl;
 
+						std::string username(removed.at("username"));
+						std::string message_contents(removed.at("message"));
+						std::string testmessage = "\n" + username + ":" + message_contents;
+					}
+					
+					//testSendToAllOthers(removed.at("source_fd"), testmessage);
 
+					m_session_manager->receiveJSON(removed);
 				}
 				break;
 		}

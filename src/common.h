@@ -19,8 +19,13 @@ using JSON = nlohmann::json;
 
 
 namespace common {
+
+	int sendThroughSocket(SOCKET destination, JSON message_json);
+
 	int sendThroughSocket(SOCKET destination, std::string message_str);
 
 	void check(int input, std::string instance);
+
+	bool stringCompare(std::string s1, std::string s2);
 }
 
