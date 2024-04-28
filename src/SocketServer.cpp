@@ -1,9 +1,10 @@
 #include "SocketServer.h"
 
 
-#define SERVER_PORT 12345
 
-
+/*-------------------------------------------*/
+/*                Constructor                */
+/*-------------------------------------------*/
 SocketServer::SocketServer() {
 	std::cout << "in constructor\n" << std::endl;
 	initServer();
@@ -151,7 +152,7 @@ void SocketServer::pollSocketArray() {
 					break;
 				}
 				//continue case
-				if (message_string.compare("continue") == 0) { continue; }
+				if (common::stringCompare(message_string, "continue")) { continue; }
 
 				//Print message
 				//else { std::cout << message_string << std::endl; }
@@ -420,12 +421,13 @@ int SocketServer::initThreads() {
 			ThreadRoleArray[i].role = work;
 
 		hThreadArray[i] = CreateThread(
-			NULL,
-			0,
-			staticThreadFunction,
-			&(ThreadRoleArray[i]),
-			0,
-			&dwThreadIDArray[i]);
+										NULL,
+										0,
+										staticThreadFunction,
+										&(ThreadRoleArray[i]),
+										0,
+										&dwThreadIDArray[i]
+										);
 
 		if (hThreadArray[i] == NULL) {
 			printf("CreateThread error: %d\n", GetLastError());

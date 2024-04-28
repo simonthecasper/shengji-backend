@@ -10,13 +10,14 @@
 
 #define MAX_THREADS			3
 
-#define HEADER_SIZE			64
-#define CLIENT_CLOSED		2
-#define CLIENT_CLOSED_PY	3
-#define FD_ARRAY_SIZE		200
-#define LISTEN_BACKLOG		32
+#define HEADER_SIZE         64
+#define CLIENT_CLOSED       2
+#define CLIENT_CLOSED_PY    3
+#define FD_ARRAY_SIZE       200
+#define LISTEN_BACKLOG      32
 
 #define SERVER_IP			"192.168.0.77"
+#define SERVER_PORT			12345
 
 class SocketServer;
 
@@ -25,8 +26,8 @@ enum SocketReadState { awaiting_header, awaiting_body };
 
 
 struct ThreadRoleStruct {
-	//this self referential server field is needed to find the thread function
-	//since we have the static thread function wrapper
+	// This self referential server field is needed to find the thread function
+	//   since we have the static thread function wrapper
 	SocketServer* server;
 	ThreadRoleEnum role;
 };
@@ -121,25 +122,26 @@ private:
 	// Closes all open sockets in the socket FD array
 	void closeAllSockets();
 
-//public:
-//	int sendThroughSocket(SOCKET destination, std::string message);
-
-private:
+	// Sends the message to all connected sockets. Used for testing
 	void testSendToAllOthers(SOCKET source, std::string message);
 
 
 	/*-------------------------------------------*/
 	/*        Multithreading / ThreadPool        */
 	/*-------------------------------------------*/
+
+	// Initializes all threads and assigns them their respective roles
 	int initThreads();
 
+	// Static wrapper function for the thread function because windows is weird
 	static DWORD WINAPI staticThreadFunction(void* param);
 
+	// Actual thread function
 	DWORD WINAPI threadFunction(ThreadRoleEnum* param);
 
-	//Thread safe function that adds a task to the work queue
+	// Thread safe function that adds a task to the work queue
 	int addToQueue(JSON task);
 
-	//Thread safe function that retrieves a task from the work queue if available
+	// Thread safe function that retrieves a task from the work queue if available
 	JSON getWorkFromQueue();
 };
