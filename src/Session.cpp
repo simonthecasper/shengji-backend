@@ -32,14 +32,12 @@ int Session::addPlayer(SOCKET player_fd) {
 	return id;
 }
 
-
 int Session::generateID() {
 	int id = rand() % 10000;
 	while (m_player_ids.count(id) != 0)
 		id = rand() % 10000;
 	return id;
 }
-
 
 int Session::handleJSON(JSON input) {
 
@@ -52,11 +50,9 @@ int Session::handleJSON(JSON input) {
 	return 0;
 }
 
-
 std::string Session::getID() {
 	return m_id;
 }
-
 
 void Session::sendToOtherPlayers(int source_player, JSON message) {
 	SOCKET source_fd = m_id_to_socket.at(source_player);
