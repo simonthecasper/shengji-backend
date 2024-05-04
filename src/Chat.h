@@ -2,7 +2,7 @@
 
 #include <iostream>
 #include <list>
-#include <Windows.h>
+#include <mutex>
 #include "json.hpp"
 
 using JSON = nlohmann::json;
@@ -11,7 +11,7 @@ class Chat
 {
 private:
 	std::list<JSON> m_chatlog;
-	HANDLE		m_mutex_chatlog;
+	std::mutex		m_mutex_chatlog;
 
 public:
 	Chat();

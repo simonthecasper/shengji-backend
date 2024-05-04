@@ -1,21 +1,20 @@
 #pragma once
 #include <unordered_map>
-#include <WinSock2.h>
+#include <sys/socket.h>
 #include <iostream>
 
 class SocketManager
 {
 private:
 	int m_session_id;
-	std::unordered_map<int, SOCKET> m_player_sockets;
+	std::unordered_map<int, int> m_playerid_to_socket;
 
 public:
 	SocketManager(int session_id);
 
-	int addPlayerSocket(int id, SOCKET socket_fd);
+	int addPlayerSocket(int id, int socket_fd);
 
-
-	SOCKET getPlayerSocket(int id);
+	int getPlayerSocket(int id);
 
 
 };

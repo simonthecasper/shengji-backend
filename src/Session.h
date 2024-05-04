@@ -18,14 +18,18 @@ class Session
 private:
 	//SocketServer*			m_server;
 
-	std::string				m_id;
-	Chat*					m_chatlog;
+	std::string						m_id;
+	Chat* m_chatlog;
 
-	unordered_set<int>		m_player_ids;
-	unordered_set<SOCKET>	m_player_sockets;
-	list<Player*>			m_player_list;
-	unordered_map<int, SOCKET>
-							m_id_to_socket;
+
+	set<Player*>					m_player_list;
+
+	unordered_set<int>				m_player_ids;
+	unordered_set<int>				m_player_sockets;
+
+	unordered_map<int, int>			m_id_to_socket;
+	unordered_map<int, int>			m_socket_to_id;
+	unordered_map<int, Player*> 	m_id_to_player;
 
 	//administrative fields
 	//Deck*					m_deck;
@@ -39,7 +43,7 @@ private:
 	//MatchState			m_state;
 	int					m_player_count;
 	//int					m_game_score;
-	//
+
 	//Player*				m_trick_starter;
 	//Player*				m_current_player;
 	//Player*				m_next_player;
@@ -54,7 +58,7 @@ public:
 
 	// Accepts the SocketFD for a new player to add to the session and
 	//   return the ID this player gets assigned.
-	int addPlayer(SOCKET m_player_fd);
+	int addPlayer(int m_player_fd);
 
 	int generateID();
 
@@ -63,4 +67,6 @@ public:
 	std::string getID();
 
 	void sendToOtherPlayers(int source_player, JSON message);
+
+	void removePlayer(int socket);
 };

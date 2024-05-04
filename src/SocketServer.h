@@ -1,23 +1,33 @@
 #pragma once
 
-//#include "common.h"
+#include "common.h"
 
 #include "AcceptedSocket.h"
 #include "SessionManager.h"
+
 #include <mutex>
 #include <memory>
+#include <sys/poll.h>
+#include <sys/ioctl.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 
+#define MAX_THREADS				3
 
-#define MAX_THREADS			3
+#define HEADER_SIZE         	64
+#define FD_ARRAY_SIZE       	200
+#define LISTEN_BACKLOG      	32
 
-#define HEADER_SIZE         64
-#define CLIENT_CLOSED       2
-#define CLIENT_CLOSED_PY    3
-#define FD_ARRAY_SIZE       200
-#define LISTEN_BACKLOG      32
+#define CLIENT_CLOSED_PY_LINUX 	1
+#define CLIENT_CLOSED       	2
+#define CLIENT_CLOSED_PY    	3
 
-#define SERVER_IP			"192.168.0.77"
-#define SERVER_PORT			12345
+// #define SERVER_IP				"192.168.0.77"
+// #define SERVER_IP				"172.19.128.1"
+#define SERVER_IP				"0.0.0.0"
+#define SERVER_PORT				12345
 
 class SocketServer;
 
@@ -38,27 +48,27 @@ class SocketServer
 
 private:
 	// Server IP
-	SOCKET					m_serverSocketFD;
-	struct sockaddr_in*		m_serverAddress;
+	int					m_serverSocketFD;
+	struct sockaddr_in* m_serverAddress;
 
 	// Multithreading/ThreadPool
-	DWORD					dwThreadIDArray[MAX_THREADS];
-	HANDLE					hThreadArray[MAX_THREADS];
-	ThreadRoleStruct		ThreadRoleArray[MAX_THREADS];
+	uint					m_threadIDArray[MAX_THREADS];
+	pthread_t				m_thread_pool[MAX_THREADS];
+	ThreadRoleStruct		m_thread_role_array[MAX_THREADS];
 	std::queue<JSON>		m_work_queue;
-	HANDLE					m_queue_control_mutex;
+	std::mutex				m_queue_control_mutex;
 
 	// Polling
 	int						m_nfds;
 	struct pollfd			m_pollfd_array[FD_ARRAY_SIZE];
-	enum SocketReadState	m_fd_read_state[FD_ARRAY_SIZE];
+	SocketReadState			m_fd_read_state[FD_ARRAY_SIZE];
 	int						m_fd_message_size[FD_ARRAY_SIZE];
 	bool					m_compress_fd_array;
-	HANDLE					m_mutex_compress_flag;
-	HANDLE					m_mutex_fd_array;
+	std::mutex				m_mutex_compress_flag;
+	std::mutex				m_mutex_fd_array;
 
 	// Session Managing
-	SessionManager*			m_session_manager;
+	SessionManager* m_session_manager;
 
 
 public:
@@ -94,7 +104,7 @@ private:
 	void pollAcceptNewConnections();
 
 	// Accepts an incoming socket sonnection at the provided socketFD
-	AcceptedSocket* acceptIncomingConnection(SOCKET serverSocketFD);
+	AcceptedSocket* acceptIncomingConnection(int serverSocketFD);
 
 	// Receives an available message header from the provided socket FD
 	std::string pollReceiveMessageHeader(int index);
@@ -103,9 +113,9 @@ private:
 	std::string pollReceiveMessageBody(int current_fd);
 
 	struct sockaddr_in* createIPv4Address(std::string ip, int port);
-	
+
 	// Creates and returns a socketFD
-	SOCKET createTCPIPv4Socket();
+	int createTCPIPv4Socket();
 
 	// Removes unused index spaces in the FD array after connections are closed
 	void compressFDArray();
@@ -123,8 +133,11 @@ private:
 	void closeAllSockets();
 
 	// Sends the message to all connected sockets. Used for testing
-	void testSendToAllOthers(SOCKET source, std::string message);
+	void testSendToAllOthers(int source, std::string message);
 
+	// Returns true if the client has closed their connection
+	// Returns false if not
+	bool checkIfClientClosed(int fdarray_index);
 
 	/*-------------------------------------------*/
 	/*        Multithreading / ThreadPool        */
@@ -133,11 +146,11 @@ private:
 	// Initializes all threads and assigns them their respective roles
 	int initThreads();
 
-	// Static wrapper function for the thread function because windows is weird
-	static DWORD WINAPI staticThreadFunction(void* param);
+	// Static thread function wrapper to get rid of the hidden "this" parameter
+	static void* staticThreadFunction(void* args);
 
 	// Actual thread function
-	DWORD WINAPI threadFunction(ThreadRoleEnum* param);
+	void* threadFunction(ThreadRoleEnum role);
 
 	// Thread safe function that adds a task to the work queue
 	int addToQueue(JSON task);
