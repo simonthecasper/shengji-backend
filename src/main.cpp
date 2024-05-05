@@ -40,7 +40,6 @@ void deckTesting() {
 		std::cout << to_string(i) << ": " << (*drawnCard).toString() << "\n";
 		cardset.insert(*drawnCard);
 	}
-
 	std::cout << "\n" << std::endl;
 
 
