@@ -1,12 +1,11 @@
 #include "SocketServer.h"
 
 
-
 /*-------------------------------------------*/
 /*                Constructor                */
 /*-------------------------------------------*/
 SocketServer::SocketServer() {
-	std::cout << "in constructor\n" << std::endl;
+	std::cout << "Constructing SocketServer..." << std::endl;
 	initServer();
 	printIP();
 
@@ -98,36 +97,20 @@ void SocketServer::pollSocketArray() {
 	m_nfds = 1;
 
 	int		timeout = -1;
-	//timeout = (3 * 60 * 1000);
+	timeout = (5 * 60 * 1000);  // 5 minute timeout
 
 	int		fd_index, current_fd;
 	bool	close_conn;
 	do {
 		int poll_result = waitForPoll(timeout); //blocks until poll returns
 
-
 		int current_size = m_nfds;
 		for (fd_index = 0; fd_index < current_size; fd_index++) {
 			current_fd = m_pollfd_array[fd_index].fd;
 			close_conn = false;
 
+			// No updates on this socket
 			if (m_pollfd_array[fd_index].revents == 0) continue;
-
-			if (close_conn = checkIfClientClosed(fd_index)) {
-				break;
-			}
-
-
-			// if (m_pollfd_array[fd_index].revents == CLIENT_CLOSED) {
-			// 	printf(">>Index %d Connection closed by revents\n", fd_index);
-			// 	close_conn = true;
-			// 	break;
-			// }
-			// else if (m_pollfd_array[fd_index].revents == CLIENT_CLOSED_PY) {
-			// 	printf(">>Index %d Connection closed by revents (py)\n", fd_index);
-			// 	close_conn = true;
-			// 	break;
-			// }
 
 			// If revents is not "Read ready", it's an unexpected result
 			// log and end the server.
@@ -144,70 +127,9 @@ void SocketServer::pollSocketArray() {
 			}
 
 			// Not the listening socket, an existing connection is readable
-			else {
-				enum SocketReadState state = m_fd_read_state[fd_index];
-				// switch (state) {
-				// case awaiting_header:
-				// 	//std::cout << "receiving header" << std::endl;
-				// 	message_string = pollReceiveMessageHeader(fd_index);
+			else { pollReceiveAndProcessMessage(fd_index); }
 
-				// 	if (common::stringCompare(message_string, "disconnected")) {
-				// 		close_conn = true;
-				// 	}
-
-				// 	break;
-
-				// case awaiting_body:
-				// 	//std::cout << "receiving body" << std::endl;
-				// 	message_string = pollReceiveMessageBody(fd_index);
-				// 	break;
-				// }
-
-
-				int message_size = m_fd_message_size[fd_index];
-				std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
-
-
-				//Receive message
-				int message_rc = recv(m_pollfd_array[fd_index].fd, message_buffer.get(), message_size, 0);
-
-				if (message_rc == 0) {
-					std::cout << "Client on index " << fd_index << " has closed their connection." << std::endl;
-					closeConnectionFDArray(fd_index);
-					m_session_manager->removeSocket(current_fd);
-					continue;
-				}
-
-				std::string message_string(message_buffer.get());
-				JSON message_json = JSON::parse(message_string);
-
-				if (state == awaiting_header) {
-					int message_size = message_json.at("message_size");
-					m_fd_message_size[fd_index] = message_size;
-					m_fd_read_state[fd_index] = awaiting_body;
-				}
-
-				if (state == awaiting_body) {
-					m_fd_read_state[fd_index] = awaiting_header;
-					m_fd_message_size[fd_index] = HEADER_SIZE;  //set to a default value
-
-					message_json["source_fd"] = m_pollfd_array[fd_index].fd;
-					addToQueue(message_json);
-				}
-
-				// PRINTING
-				// std::cout << message_string << std::endl;
-				// if (state == awaiting_header) {
-				// 	std::cout << jsontest.at("message_size") << std::endl;
-				// } else {
-				// 	std::cout << jsontest.at("username") << std::endl;
-				// 	std::cout << jsontest.at("message") << std::endl;
-				// }
-			}  // End of existing connection is readable
 		} // End of loop through pollable descriptors
-
-		// If the close_conn flag was turned on, we to clean up this active connection.
-		if (close_conn) { closeConnectionFDArray(fd_index); }
 
 		// If the compress_array flag was turned on, we need to squeeze
 		// together the array and decrement the number of file descriptors.
@@ -228,9 +150,10 @@ int SocketServer::waitForPoll(int timeout) {
 		perror("  poll() failed with SOCKET_ERROR. Ending program.\n");
 		exit(-1);
 	}
-	else if (poll_result == 0) { //timeout case
-		printf("  poll() timed out. End program.\n");
-		exit(-1);
+
+	if (poll_result == 0) {
+		std::cout << "Poll has timed out. Closing server." << std::endl;
+		exit(-10);
 	}
 
 	return poll_result;
@@ -275,58 +198,47 @@ AcceptedSocket* SocketServer::acceptIncomingConnection(int serverSocketFD) {
 	return NULL;
 }
 
-std::string SocketServer::pollReceiveMessageHeader(int index) {
-	char header_buffer[HEADER_SIZE];
-	memset(&header_buffer, 0, sizeof(header_buffer));
-	int header_rc = recv(m_pollfd_array[index].fd, header_buffer, sizeof(header_buffer), 0);
+void SocketServer::pollReceiveAndProcessMessage(int fd_index) {
+	int current_fd = m_pollfd_array[fd_index].fd;
+	enum SocketReadState state = m_fd_read_state[fd_index];
 
-	std::cout << "header_rc: " << header_rc << std::endl;
-
-	if (header_rc == 0)  return "disconnected";
-
-	// Header is expected
-	if (header_rc != HEADER_SIZE) {
-		std::cout << ">>ERROR:Message header was expected but was not received\n" << std::endl;
-		std::cout << "revents:" << m_pollfd_array[index].revents << std::endl;
-		return "continue";
-	}
-	std::string header_string(header_buffer);
-	JSON header_json = JSON::parse(header_string);
-
-	int message_size = header_json.at("message_size");
-	m_fd_message_size[index] = message_size;
-	m_fd_read_state[index] = awaiting_body;
-
-	return header_string;
-}
-
-std::string SocketServer::pollReceiveMessageBody(int current_fd) {
-	if (m_fd_message_size[current_fd] < 1) {
-		printf(">>ERROR:Expected message size is not a valid value\n");
-		m_fd_read_state[current_fd] = awaiting_header;
-		m_fd_message_size[current_fd] = -1;
-		return "continue";
-	}
-
-	int message_size = m_fd_message_size[current_fd];
+	int message_size = m_fd_message_size[fd_index];
 	std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
 
+
 	//Receive message
-	int message_rc = recv(m_pollfd_array[current_fd].fd, message_buffer.get(), message_size, 0);
-
-	if (message_rc < 0) {
-		printf(">>ERROR:Nothing was available to read\n");
-		m_fd_read_state[current_fd] = awaiting_header;
-		m_fd_message_size[current_fd] = -1;
-		return "continue";
+	int message_rc = recv(m_pollfd_array[fd_index].fd, message_buffer.get(), message_size, 0);
+	if (message_rc == 0) {
+		std::cout << "Client on index " << fd_index << " has closed their connection." << std::endl;
+		closeConnectionFDArray(fd_index);
+		m_session_manager->removeSocket(current_fd);
+		return;
 	}
+
 	std::string message_string(message_buffer.get());
-	//std::cout << "Message:" << message_string << "\n" << std::endl;
+	JSON message_json = JSON::parse(message_string);
 
-	m_fd_read_state[current_fd] = awaiting_header;
-	m_fd_message_size[current_fd] = -1;  //set to a default value
+	if (state == awaiting_header) {  // Prepare for incoming body
+		int next_message_size = message_json.at("message_size");
+		m_fd_message_size[fd_index] = next_message_size;
+		m_fd_read_state[fd_index] = awaiting_body;
+	}
+	else if (state == awaiting_body) { // Prepare for next header
+		m_fd_read_state[fd_index] = awaiting_header;
+		m_fd_message_size[fd_index] = HEADER_SIZE;  //set to a default value
 
-	return message_string;
+		message_json["source_fd"] = m_pollfd_array[fd_index].fd;
+		addToQueue(message_json);
+	}
+
+	// PRINTING
+	// std::cout << message_string << std::endl;
+	// if (state == awaiting_header) {
+	// 	std::cout << jsontest.at("message_size") << std::endl;
+	// } else {
+	// 	std::cout << jsontest.at("username") << std::endl;
+	// 	std::cout << jsontest.at("message") << std::endl;
+	// }
 }
 
 struct sockaddr_in* SocketServer::createIPv4Address(std::string ip, int port) {
@@ -413,27 +325,6 @@ void SocketServer::testSendToAllOthers(int source, std::string message) {
 }
 
 
-bool SocketServer::checkIfClientClosed(int fdarray_index) {
-	if (m_pollfd_array[fdarray_index].revents == CLIENT_CLOSED) {
-		printf(">>Index %d Connection closed by revents\n", fdarray_index);
-		return true;
-	}
-	else if (m_pollfd_array[fdarray_index].revents == CLIENT_CLOSED_PY) {
-		printf(">>Index %d Connection closed by revents (py)\n", fdarray_index);
-		return true;
-	}
-	// else if (m_pollfd_array[fdarray_index].revents == CLIENT_CLOSED_PY_LINUX) {
-	// 	printf(">>Index %d Connection closed by revents (py_LINUX)\n", fdarray_index);
-	// 	return true;
-	// }
-
-	std::cout << "Socket not closed: " << fdarray_index << std::endl;
-	std::cout << "  revents: " << m_pollfd_array[fdarray_index].revents << std::endl;
-
-	return false;
-}
-
-
 /*-------------------------------------------*/
 /*        Multithreading / ThreadPool        */
 /*-------------------------------------------*/
@@ -447,11 +338,6 @@ int SocketServer::initThreads() {
 			m_thread_role_array[i].role = work;
 
 		pthread_create(&m_thread_pool[i], NULL, staticThreadFunction, &(m_thread_role_array[i]));
-
-		// if (m_pthreadArray[i] == NULL) {
-		// 	std::cout << "Create thread error" << std::endl;
-		// 	return 1;
-		// }
 	}
 	std::cout << "threads created" << std::endl;
 
@@ -460,21 +346,15 @@ int SocketServer::initThreads() {
 
 	std::cout << "wait passed" << std::endl;
 
-	// Close thread and mutex handles
-	// for (int i = 0; i < MAX_THREADS; i++)
-	// 	CloseHandle(hThreadArray[i]);
-
-	// CloseHandle(m_queue_control_mutex);
+	// Close thread and mutex handles?? unsure if needed for linux
 
 	return 0;
 }
-
 
 void* SocketServer::staticThreadFunction(void* args) {
 	ThreadRoleStruct* thread_role = (ThreadRoleStruct*)args;
 	return thread_role->server->threadFunction(thread_role->role);
 }
-
 
 void* SocketServer::threadFunction(ThreadRoleEnum role) {
 	while (true) {
@@ -486,8 +366,8 @@ void* SocketServer::threadFunction(ThreadRoleEnum role) {
 		case work:
 			JSON removed = getWorkFromQueue();
 
+			// Printing
 			if (removed != NULL) {
-
 				if (common::stringCompare(removed.at("stage"), "chat")) {
 					std::cout << "username:" << removed.at("username") << std::endl;
 					std::cout << "message:" << removed.at("message") << std::endl;
@@ -497,9 +377,7 @@ void* SocketServer::threadFunction(ThreadRoleEnum role) {
 					std::string message_contents(removed.at("message"));
 					std::string testmessage = "\n" + username + ":" + message_contents;
 				}
-
 				//testSendToAllOthers(removed.at("source_fd"), testmessage);
-
 				m_session_manager->receiveJSON(removed);
 			}
 			break;
@@ -510,31 +388,20 @@ void* SocketServer::threadFunction(ThreadRoleEnum role) {
 
 int SocketServer::addToQueue(JSON task) {
 	m_queue_control_mutex.lock();
-
 	m_work_queue.push(task);
-
 	m_queue_control_mutex.unlock();
-
 	return 0;
 }
 
 JSON SocketServer::getWorkFromQueue() {
 	m_queue_control_mutex.lock();
-
 	JSON ret = NULL;
 	if (m_work_queue.size() != 0) {
 		ret = m_work_queue.front();
 		m_work_queue.pop();
 	}
-
 	m_queue_control_mutex.unlock();
 
 	return ret;
 }
-
-
-
-
-
-
 

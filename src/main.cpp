@@ -8,9 +8,6 @@
 int serverTesting();
 
 int main() {
-
-	std::cout << "Hello" << std::endl;
-
 	serverTesting();
 	// deckTesting();
 

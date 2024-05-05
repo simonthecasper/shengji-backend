@@ -20,9 +20,10 @@
 #define FD_ARRAY_SIZE       	200
 #define LISTEN_BACKLOG      	32
 
-#define CLIENT_CLOSED_PY_LINUX 	1
-#define CLIENT_CLOSED       	2
-#define CLIENT_CLOSED_PY    	3
+// From windows implementation
+// #define CLIENT_CLOSED_PY_LINUX 	1
+// #define CLIENT_CLOSED       	2
+// #define CLIENT_CLOSED_PY    	3
 
 // #define SERVER_IP				"192.168.0.77"
 // #define SERVER_IP				"172.19.128.1"
@@ -80,24 +81,27 @@ private:
 	/*-------------------------------------------*/
 	void initServer();
 
-	//Creates a socket for the server and configures it for Polling
+	// Creates a socket for the server and configures it for Polling
 	void setupServerSocketFD();
 
-	//Initializes all mutexes (change later??)
+	// Initializes all mutexes (change later??)
 	void initMutex();
 
-	//void check(int input, std::string instance);
-
+	// Prints server socket IP information
 	void printIP();
 
 
 	/*-------------------------------------------*/
 	/*        Poll and Socket Connections        */
 	/*-------------------------------------------*/
+
+	// Runs the basic poll loop to read incoming data from sockets.
+	// This is the work function of the thread that is assigned the
+	//	 listen_incoming_data role
 	void pollSocketArray();
 
-	// Calls WSAPoll with the provided timeout value and returns the poll result.
-	//   Exits the program if poll fails.
+	// Calls poll with the provided timeout value and returns the poll result.
+	// Exits the program if poll fails.
 	int waitForPoll(int timeout);
 
 	// Adds new socket connections as detected by poll to the FD array
@@ -106,12 +110,14 @@ private:
 	// Accepts an incoming socket sonnection at the provided socketFD
 	AcceptedSocket* acceptIncomingConnection(int serverSocketFD);
 
-	// Receives an available message header from the provided socket FD
-	std::string pollReceiveMessageHeader(int index);
+	// Reads the socketFD at the provided fd_index in the m_pollfd_array and processes 
+	// whatever the message needs.
+	//  -Received Header: Prepares for message body
+	//  -Received Body: Processes body and prepares for next message header
+	//  -Received Socket Close: Safely closes socket and signals so
+	void pollReceiveAndProcessMessage(int fd_index);
 
-	// Receives an available message body from the provided socket FD
-	std::string pollReceiveMessageBody(int current_fd);
-
+	// Returns a structaddr_in* at the provided IPv4 address and port
 	struct sockaddr_in* createIPv4Address(std::string ip, int port);
 
 	// Creates and returns a socketFD
@@ -135,9 +141,6 @@ private:
 	// Sends the message to all connected sockets. Used for testing
 	void testSendToAllOthers(int source, std::string message);
 
-	// Returns true if the client has closed their connection
-	// Returns false if not
-	bool checkIfClientClosed(int fdarray_index);
 
 	/*-------------------------------------------*/
 	/*        Multithreading / ThreadPool        */
@@ -149,7 +152,12 @@ private:
 	// Static thread function wrapper to get rid of the hidden "this" parameter
 	static void* staticThreadFunction(void* args);
 
-	// Actual thread function
+	// Thread function that does work depending on the role given to the thread.
+	// Threads have 2 possible roles:
+	//	--listen_incoming_data: reads if there is any new data from sockets.
+	//	 	Only 1 thread will be assigned to this role.
+	//  --work: retrieves work from the threadpool queue and does whatever
+	//		that task needs.
 	void* threadFunction(ThreadRoleEnum role);
 
 	// Thread safe function that adds a task to the work queue
