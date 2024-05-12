@@ -13,12 +13,16 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <openssl/sha.h>
 
-#define MAX_THREADS				3
+#define MAX_THREADS				2
 
-#define HEADER_SIZE         	64
+// #define HEADER_SIZE         	64
+#define HEADER_SIZE         	1024
 #define FD_ARRAY_SIZE       	200
 #define LISTEN_BACKLOG      	32
+
+#define WEBSOCKET_MAGIC			"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 // From windows implementation
 // #define CLIENT_CLOSED_PY_LINUX 	1
@@ -33,7 +37,7 @@
 class SocketServer;
 
 enum ThreadRoleEnum { listen_incoming_data, work };
-enum SocketReadState { awaiting_header, awaiting_body };
+enum SocketReadState { awaiting_WebSocket_upgrade, awaiting_header, awaiting_body, debug_print };
 
 
 struct ThreadRoleStruct {
@@ -140,6 +144,12 @@ private:
 
 	// Sends the message to all connected sockets. Used for testing
 	void testSendToAllOthers(int source, std::string message);
+
+	std::string computeSecWebsocketAccept(std::string SecWebsocketKey);
+
+	void doWebsocketUpgrade(int fd_index);
+
+	std::string extractWebsocketKey(std::string http_request);
 
 
 	/*-------------------------------------------*/

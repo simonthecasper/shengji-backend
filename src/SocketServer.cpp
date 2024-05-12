@@ -6,8 +6,8 @@
 /*-------------------------------------------*/
 SocketServer::SocketServer() {
 	std::cout << "Constructing SocketServer..." << std::endl;
-	initServer();
-	printIP();
+	// initServer();
+	// printIP();
 
 	m_session_manager = new SessionManager();
 	std::fill_n(m_fd_message_size, FD_ARRAY_SIZE, HEADER_SIZE); //initialize all sockets to expect headers
@@ -97,7 +97,7 @@ void SocketServer::pollSocketArray() {
 	m_nfds = 1;
 
 	int		timeout = -1;
-	timeout = (5 * 60 * 1000);  // 5 minute timeout
+	// timeout = (5 * 60 * 1000);  // 5 minute timeout
 
 	int		fd_index, current_fd;
 	bool	close_conn;
@@ -127,7 +127,25 @@ void SocketServer::pollSocketArray() {
 			}
 
 			// Not the listening socket, an existing connection is readable
-			else { pollReceiveAndProcessMessage(fd_index); }
+			else {
+				SocketReadState socket_state = m_fd_read_state[fd_index];
+				if (socket_state == awaiting_WebSocket_upgrade) {
+					doWebsocketUpgrade(fd_index);
+				}
+
+				else if (socket_state = debug_print) {
+					char message_buffer[1024];
+					int message_rc = recv(current_fd, message_buffer, 1024, 0);
+
+					std::string message_str(message_buffer);
+
+					std::cout << message_str << std::endl;
+				}
+
+				else {
+					pollReceiveAndProcessMessage(fd_index);
+				}
+			}
 
 		} // End of loop through pollable descriptors
 
@@ -171,7 +189,15 @@ void SocketServer::pollAcceptNewConnections() {
 		std::cout << ">>New incoming connection : " << new_sd << "\n" << std::endl;
 		m_pollfd_array[m_nfds].fd = new_sd;
 		m_pollfd_array[m_nfds].events = POLLIN;
-		m_fd_read_state[m_nfds] = awaiting_header;
+
+		m_fd_read_state[m_nfds] = awaiting_WebSocket_upgrade;
+		// m_fd_read_state[m_nfds] = awaiting_header;
+
+		// int message_size = 1024;
+		// std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
+		// int message_rc = recv(new_sd, message_buffer.get(), 1024, 0);
+
+
 		m_nfds++;
 	} while (true);
 }
@@ -207,7 +233,7 @@ void SocketServer::pollReceiveAndProcessMessage(int fd_index) {
 
 
 	//Receive message
-	int message_rc = recv(m_pollfd_array[fd_index].fd, message_buffer.get(), message_size, 0);
+	int message_rc = recv(current_fd, message_buffer.get(), message_size, 0);
 	if (message_rc == 0) {
 		std::cout << "Client on index " << fd_index << " has closed their connection." << std::endl;
 		closeConnectionFDArray(fd_index);
@@ -322,6 +348,61 @@ void SocketServer::testSendToAllOthers(int source, std::string message) {
 			int send_result = common::sendThroughSocket(dest, message);
 		}
 	}
+}
+
+std::string SocketServer::computeSecWebsocketAccept(std::string SecWebsocketKey) {
+	std::string key_appended = SecWebsocketKey + WEBSOCKET_MAGIC;
+	const unsigned char* to_encode = (const unsigned char*)(key_appended.c_str());
+	unsigned char hash[20];
+
+	SHA1(to_encode, sizeof(to_encode) - 1, hash);
+	std::string accept_encoded = common::base64_encode(hash, 20);
+
+	return accept_encoded;
+}
+
+void SocketServer::doWebsocketUpgrade(int fd_index) {
+	int current_fd = m_pollfd_array[fd_index].fd;
+
+	int message_size = 1024;
+	std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
+
+	int message_rc = recv(current_fd, message_buffer.get(), 1024, 0);
+
+	std::string message_string(message_buffer.get());
+	std::cout << message_string << std::endl;
+	std::cout << message_string.length() << std::endl;
+
+	std::string upgrade_request(message_buffer.get());
+
+	std::string websocket_key = extractWebsocketKey(upgrade_request);
+
+	std::cout << websocket_key << std::endl;
+
+	std::string upgrade_response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ";
+	upgrade_response += computeSecWebsocketAccept(websocket_key);
+	upgrade_response += "\r\n\r\n";
+
+	common::sendThroughSocket(current_fd, upgrade_response);
+	m_fd_read_state[fd_index] = awaiting_header;
+	// m_fd_read_state[fd_index] = debug_print;
+}
+
+
+std::string SocketServer::extractWebsocketKey(std::string http_request) {
+	std::string s = http_request;
+	int length = s.length();
+
+	std::string token = "Sec-WebSocket-Key: ";
+	int start = s.find(token) + token.length();
+
+	std::string key_to_end = s.substr(start, s.length() - 1);
+
+	int end = key_to_end.find("\r\n");
+
+	std::string key = s.substr(start, end);
+
+	return key;
 }
 
 

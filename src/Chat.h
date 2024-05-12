@@ -7,6 +7,7 @@
 
 using JSON = nlohmann::json;
 
+
 class Chat
 {
 private:
