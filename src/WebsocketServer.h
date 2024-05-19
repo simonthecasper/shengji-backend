@@ -2,18 +2,9 @@
 
 #define ASIO_STANDALONE
 
-#include <functional>
-
-#include <websocketpp/config/asio.hpp>
-#include <websocketpp/server.hpp>
 
 #include "SocketServer.h"
 
-
-#define SERVER_PORT     12345
-
-
-typedef websocketpp::server<websocketpp::config::asio> server;
 
 
 class LogStream : public std::streambuf {
@@ -40,14 +31,19 @@ protected:
 class WebsocketServer {
 
 private:
-    server m_server;
-    SocketServer m_sockserver;
+    ws_server       m_wss;
+    SocketServer* m_sockserver;
 
 public:
     WebsocketServer();
 
-    void on_message(websocketpp::connection_hdl hdl, server::message_ptr msg);
+    void initThreads();
+
+    void on_message(websocketpp::connection_hdl hdl, ws_server::message_ptr msg);
 
     void run();
 
+    static void* startSocketServer(void* args);
+
+    static void* runWSS(void* args);
 };

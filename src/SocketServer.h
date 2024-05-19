@@ -15,7 +15,9 @@
 #include <sys/syscall.h>
 #include <openssl/sha.h>
 
+#define THREAD_START			0  // set to 1 to skip network listen thread
 #define MAX_THREADS				2
+
 
 // #define HEADER_SIZE         	64
 #define HEADER_SIZE         	1024
@@ -32,7 +34,7 @@
 // #define SERVER_IP				"192.168.0.77"
 // #define SERVER_IP				"172.19.128.1"
 #define SERVER_IP				"0.0.0.0"
-#define SERVER_PORT				12345
+#define SERVER_PORT				54329
 
 class SocketServer;
 
@@ -53,14 +55,17 @@ class SocketServer
 
 private:
 	// Server IP
-	int					m_serverSocketFD;
+	int						m_serverSocketFD;
 	struct sockaddr_in* m_serverAddress;
 
 	// Multithreading/ThreadPool
 	uint					m_threadIDArray[MAX_THREADS];
 	pthread_t				m_thread_pool[MAX_THREADS];
 	ThreadRoleStruct		m_thread_role_array[MAX_THREADS];
-	std::queue<JSON>		m_work_queue;
+
+	std::queue<JSON>			m_work_queue;
+	std::queue<ws_conn_hdl>		m_hdl_queue;
+
 	std::mutex				m_queue_control_mutex;
 
 	// Polling
@@ -76,13 +81,25 @@ private:
 	SessionManager* m_session_manager;
 
 
+	// SocketIO Application Server
+	int m_socketio_server_fd;
+
+
+
+	/*-------------------------------------------*/
+	/*                Constructor                */
+	/*-------------------------------------------*/
 public:
 	SocketServer();
 
-private:
 	/*-------------------------------------------*/
 	/*                  Basics                   */
 	/*-------------------------------------------*/
+	void runServerAsAppServer();
+
+	void runServerStandalone();
+
+private:
 	void initServer();
 
 	// Creates a socket for the server and configures it for Polling
@@ -157,7 +174,7 @@ private:
 	/*-------------------------------------------*/
 
 	// Initializes all threads and assigns them their respective roles
-	int initThreads();
+	int initThreadsStandalone();
 
 	// Static thread function wrapper to get rid of the hidden "this" parameter
 	static void* staticThreadFunction(void* args);
@@ -170,9 +187,40 @@ private:
 	//		that task needs.
 	void* threadFunction(ThreadRoleEnum role);
 
+	void* threadFunction_ws(ThreadRoleEnum role);
+
+public:
+
 	// Thread safe function that adds a task to the work queue
+	int addToQueue_ws(std::string task, ws_conn_hdl hdl);
+
+	// Thread safe function that adds a task to the work queue
+	int addToQueue_ws(JSON task, ws_conn_hdl hdl);
+
 	int addToQueue(JSON task);
 
+private:
 	// Thread safe function that retrieves a task from the work queue if available
 	JSON getWorkFromQueue();
+
+	std::pair<JSON, ws_conn_hdl> getWorkFromQueue_ws();
+
+	/*-------------------------------------------*/
+	/*        SocketIO Application Server        */
+	/*-------------------------------------------*/
+
+	void initThreadsAppServer();
+
+	// Static thread function wrapper to get rid of the hidden "this" parameter
+	static void* staticThreadFunctionAppServer(void* args);
+
+	// Thread function that does work depending on the role given to the thread.
+	// Threads have 2 possible roles:
+	//	--listen_incoming_data: reads if there is any new data from sockets.
+	//	 	Only 1 thread will be assigned to this role.
+	//  --work: retrieves work from the threadpool queue and does whatever
+	//		that task needs.
+	void* threadFunctionAppServer(ThreadRoleEnum role);
+
+	void pollSocketArrayAppServer();
 };

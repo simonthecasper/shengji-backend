@@ -16,7 +16,7 @@ enum MatchState {
 class Session
 {
 private:
-	//SocketServer*			m_server;
+	ws_server* m_wss;
 
 	std::string						m_id;
 	Chat* m_chatlog;
@@ -25,11 +25,20 @@ private:
 	set<Player*>					m_player_list;
 
 	unordered_set<int>				m_player_ids;
-	unordered_set<int>				m_player_sockets;
 
-	unordered_map<int, int>			m_id_to_socket;
-	unordered_map<int, int>			m_socket_to_id;
-	unordered_map<int, Player*> 	m_id_to_player;
+	////////////////PLAIN SOCKETS/////////////////
+	unordered_set<int>					m_player_sockets;
+	unordered_map<int, int>				m_id_to_socket;
+	unordered_map<int, int>				m_socket_to_id;
+	unordered_map<int, Player*> 		m_id_to_player;
+
+
+	////////////////Web Sockets///////////////////
+	// unordered_set<ws_conn_hdl>			m_player_handles;
+	unordered_map<int, ws_conn_hdl>		m_id_to_handle;
+	// unordered_map<ws_conn_hdl, int>		m_handle_to_id;
+
+
 
 	//administrative fields
 	//Deck*					m_deck;
@@ -56,9 +65,35 @@ public:
 
 	void addToChat(JSON message_json);
 
+
+
+	/*-------------------------------------------*/
+	/*                Websocket                  */
+	/*-------------------------------------------*/
+
 	// Accepts the SocketFD for a new player to add to the session and
 	//   return the ID this player gets assigned.
-	int addPlayer(int m_player_fd);
+	int addPlayer_ws(ws_conn_hdl player_hdl);
+
+	void sendToOtherPlayers_ws(int source_player, JSON message);
+
+	void removePlayer_ws(ws_conn_hdl player_hdl);
+
+	void addToChat_ws(msg_hdl_pair);
+
+	/*-------------------------------------------*/
+	/*              Python Client                */
+	/*-------------------------------------------*/
+
+	// Accepts the SocketFD for a new player to add to the session and
+	//   return the ID this player gets assigned.
+	int addPlayer(int player_fd);
+
+	void sendToOtherPlayers(int source_player, JSON message);
+
+	void removePlayer(int socket);
+
+
 
 	int generateID();
 
@@ -66,7 +101,5 @@ public:
 
 	std::string getID();
 
-	void sendToOtherPlayers(int source_player, JSON message);
 
-	void removePlayer(int socket);
 };

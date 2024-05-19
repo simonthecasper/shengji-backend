@@ -3,10 +3,6 @@
 #include <random>
 
 
-SessionManager::SessionManager() {
-
-}
-
 Session* SessionManager::createNewSession() {
     std::string new_id;
     do {
@@ -17,11 +13,19 @@ Session* SessionManager::createNewSession() {
     return m_id_to_session[new_id];
 }
 
-int SessionManager::addPlayerToSession(std::string session_id, int player) {
+int SessionManager::addPlayerToSession(std::string session_id, int player_fd) {
     Session* target_session = m_id_to_session[session_id];
-    int player_id = target_session->addPlayer(player);
+    int player_id = target_session->addPlayer(player_fd);
     return player_id;
 }
+
+
+int SessionManager::addPlayerToSession_ws(std::string session_id, ws_conn_hdl player_hdl) {
+    Session* target_session = m_id_to_session[session_id];
+    int player_id = target_session->addPlayer_ws(player_hdl);
+    return player_id;
+}
+
 
 bool SessionManager::ifSessionIDExists(std::string id) {
     if (m_id_to_session.find(id) == m_id_to_session.end())
@@ -92,11 +96,53 @@ void SessionManager::receiveJSON(JSON message) {
 
 }
 
+
+void SessionManager::receiveWork_ws(std::pair<JSON, ws_conn_hdl> work) {
+    JSON message = work.first;
+    ws_conn_hdl hdl = work.second;
+
+    std::string stage = message.at("stage");
+
+    if (common::stringCompare(stage, "prelobby")) {
+        std::string task = message.at("task");
+
+        std::string session_id;
+        int player_id;
+
+        if (common::stringCompare(task, "new_session")) {
+            Session* new_session = createNewSession();
+            session_id = new_session->getID();
+            player_id = addPlayerToSession_ws(session_id, hdl);
+        }
+        else if (common::stringCompare(task, "join_session")) {
+            session_id = message.at("session_id");
+            player_id = addPlayerToSession_ws(session_id, hdl);
+        }
+
+        JSON response;
+        response["stage"] = "prelobby";
+        response["session_id"] = session_id;
+        response["player_id"] = player_id;
+        common::sendThroughWebsocket(hdl, response);
+
+    }
+
+    if (stage == "chat") {
+        std::string session_id = message.at("session_id");
+        Session* target_session = m_id_to_session.at(session_id);
+        target_session->addToChat_ws(work);
+    }
+}
+
+
 void SessionManager::linkSocketToSessionID(int socket, std::string id) {
     m_socket_to_sessionid[socket] = id;
 }
 
 void SessionManager::removeSocket(int socket) {
-    std::string session_id = m_socket_to_sessionid.at(socket);
-    m_id_to_session.at(session_id)->removePlayer(socket);
+    // If socket exists in the sessionmanager
+    if (m_socket_to_sessionid.count(socket)) {
+        std::string session_id = m_socket_to_sessionid.at(socket);
+        m_id_to_session.at(session_id)->removePlayer(socket);
+    }
 }

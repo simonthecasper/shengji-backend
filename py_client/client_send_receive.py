@@ -3,8 +3,8 @@ import json
 import sys
 import threading
 
-HEADER_SIZE = 64
-PORT = 12345
+HEADER_SIZE = 1024
+PORT = 12123
 
 SERVER = "192.168.0.77"
 

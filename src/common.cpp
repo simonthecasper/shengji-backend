@@ -9,16 +9,34 @@ int common::sendThroughSocket(int destination, JSON message_json) {
 }
 
 int common::sendThroughSocket(int destination, std::string message_str) {
+
+	m_socket_send_mutex.lock();
 	const char* message_char = message_str.c_str();
 	int send_result = send(destination, message_char, (int)strlen(message_char), 0);
 
 	if (send_result == -1) {
 		std::cout << "Error sending message to socket " << destination << "." << std::endl;
+		m_socket_send_mutex.unlock();
 		return -1;
 	}
 
+	m_socket_send_mutex.unlock();
 	return 0;
 }
+
+
+int common::sendThroughWebsocket(ws_conn_hdl hdl, JSON message_json) {
+	std::string message_str = message_json.dump();
+	return sendThroughWebsocket(hdl, message_str);
+}
+
+
+int common::sendThroughWebsocket(websocketpp::connection_hdl hdl, std::string message) {
+	(*m_wss).send(hdl, message, opcode::text);
+
+	return 0;
+}
+
 
 void common::check(int input, std::string instance) {
 	if (input == -1) {
@@ -135,4 +153,9 @@ std::string common::base64_decode(std::string const& encoded_string) {
 	std::string ret_str(ret.begin(), ret.end());
 
 	return ret_str;
+}
+
+
+void common::print(std::string s) {
+	std::cout << s << std::endl;
 }
