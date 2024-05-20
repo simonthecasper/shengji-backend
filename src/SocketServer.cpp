@@ -597,7 +597,7 @@ void SocketServer::initThreadsAppServer() {
 		else
 			m_thread_role_array[i].role = work;
 
-		pthread_create(&m_thread_pool[i], NULL, staticThreadFunction, &(m_thread_role_array[i]));
+		pthread_create(&m_thread_pool[i], NULL, staticThreadFunctionAppServer, &(m_thread_role_array[i]));
 	}
 	std::cout << "threads created" << std::endl;
 
@@ -637,7 +637,7 @@ void* SocketServer::threadFunctionAppServer(ThreadRoleEnum role) {
 					std::string testmessage = "\n" + username + ":" + message_contents;
 				}
 
-				m_session_manager->receiveJSON(removed_json);
+				m_session_manager->receiveJSON_AppServer(removed_json);
 			}
 			break;
 		}
@@ -688,6 +688,10 @@ void SocketServer::pollSocketArrayAppServer() {
 			if (m_pollfd_array[fd_index].fd == m_serverSocketFD) {
 				printf(">>Server socket is readable. New connection pending...\n");
 				pollAcceptNewConnections();
+
+				if (common::m_socketio_server == 0) {
+					common::m_socketio_server = m_pollfd_array[1].fd;
+				}
 			}
 
 			// Not the listening socket, an existing connection is readable

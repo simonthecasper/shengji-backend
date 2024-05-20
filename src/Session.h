@@ -38,26 +38,13 @@ private:
 	unordered_map<int, ws_conn_hdl>		m_id_to_handle;
 	// unordered_map<ws_conn_hdl, int>		m_handle_to_id;
 
+	/////////SOCKETIO APPLICATION SERVER///////////
+	unordered_map<std::string, int>				m_sid_to_id;
+	unordered_map<int, std::string>				m_id_to_sid;
+	unordered_set<std::string>					m_player_sids;
 
 
-	//administrative fields
-	//Deck*					m_deck;
-	//unordered_map<int,Player*>
-	//						m_teams;
-	//unordered_map<int, int>
-	//						m_match_score;
-
-
-	//gametime fields
-	//MatchState			m_state;
 	int					m_player_count;
-	//int					m_game_score;
-
-	//Player*				m_trick_starter;
-	//Player*				m_current_player;
-	//Player*				m_next_player;
-
-	//int					m_match_state;
 
 public:
 
@@ -92,6 +79,25 @@ public:
 	void sendToOtherPlayers(int source_player, JSON message);
 
 	void removePlayer(int socket);
+
+
+	/*-------------------------------------------*/
+	/*           SocketIO App Server             */
+	/*-------------------------------------------*/
+
+	int addPlayerSID(std::string sid);
+
+	void sendToOtherPlayersSID(int source_player, JSON message);
+
+	void removePlayerSID(std::string sid);
+
+	void addToChatSID(JSON message, std::string sid);
+
+
+
+	/*-------------------------------------------*/
+	/*                 Common                    */
+	/*-------------------------------------------*/
 
 
 

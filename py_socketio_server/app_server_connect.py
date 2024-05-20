@@ -1,6 +1,7 @@
 import json
 import socket
 import threading
+from time import sleep
 
 
 
@@ -15,7 +16,17 @@ HEADER_SIZE = 1024
 class AppServerConnect:
     def __init__(self):
         self.app_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.app_server.connect(ADDR)
+        
+        while True:
+            try:
+                self.app_server.connect(ADDR)
+                print("Connected to AppServer")
+                break
+            except:
+                print("Failed connection to AppServer...")
+                print("Trying again shortly\n")
+                sleep(5)
+    
     
     
     def receive_message(self):
@@ -26,8 +37,8 @@ class AppServerConnect:
             except:
                 pass
     
-        
-        
+    
+    
     def sendToServer(self, message_str):
         final_message_str = message_str.encode(FORMAT) + b"\0"
 

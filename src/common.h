@@ -41,6 +41,8 @@ namespace common {
 
 	static ws_server* m_wss;
 
+	static int m_socketio_server;
+
 	int sendThroughSocket(int destination, JSON message_json);
 
 	int sendThroughSocket(int destination, std::string message_str);
@@ -48,6 +50,12 @@ namespace common {
 	int sendThroughWebsocket(ws_conn_hdl hdl, JSON message_json);
 
 	int sendThroughWebsocket(ws_conn_hdl hdl, std::string message);
+
+
+	int sendThroughSocketSID(JSON message_json);
+
+	int sendThroughSocketSID(std::string message_str);
+
 
 	void check(int input, std::string instance);
 
