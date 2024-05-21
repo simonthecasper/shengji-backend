@@ -195,6 +195,16 @@ void SocketServer::pollAcceptNewConnections() {
 		AcceptedSocket* new_connection = acceptIncomingConnection(m_serverSocketFD);
 		if (new_connection == NULL) { break; }
 
+
+		// Printing
+		char address[INET_ADDRSTRLEN];
+		inet_ntop(AF_INET, &new_connection->m_address.sin_addr, address, sizeof(address));
+		uint16_t port;
+		port = htons(new_connection->m_address.sin_port);
+		std::cout << address << ":" << port << std::endl;
+		std::cout << "Socket:" << new_connection->m_socketFD << std::endl;
+
+
 		// Add valid incoming connections to the pollfd structure
 		int new_sd = new_connection->m_socketFD;
 

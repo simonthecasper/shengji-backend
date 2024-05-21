@@ -1,9 +1,13 @@
 import json
 import socket
+import select
+import sys
 import threading
 from time import sleep
 import asyncio
+import functools
 
+from concurrent.futures import ThreadPoolExecutor
 
 
 SERVER_IP = "127.0.0.1"
@@ -14,9 +18,13 @@ FORMAT = "utf-8"
 HEADER_SIZE = 1024
 
 
+_executor = ThreadPoolExecutor(1)
+
 class AppServerConnect:
     def __init__(self):
         self.app_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.app_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.app_server.bind(('localhost', 2000))
         
         while True:
             try:
@@ -29,15 +37,57 @@ class AppServerConnect:
                 sleep(5)
     
     
+    # async def receive_message(self):
+        
+    #     while True:
+    #         await asyncio.sleep(0.1)
+    #         print("Reading sockets")
+    #         # Get the list sockets which are readable
+    #         # read_sockets, write_sockets, x_sockets = select.select(
+    #         #     socket_list, [], [])
+            
+    #         socket_list = [self.app_server]
+    #         read_sockets = []
+            
+    #         loop = asyncio.get_event_loop()
+    #         read_sockets, write_sockets, x_sockets = await loop.run_in_executor(_executor, functools.partial(select.select, socket_list, [], [], 1))
+            
+
+    #         for sock in read_sockets:
+    #             #incoming message from remote server
+    #             if sock == self.app_server:
+    #                 data = sock.recv(1024)
+    #                 if not data:
+    #                     print('\nDisconnected from Application Server')
+    #                     break
+    #                 else:
+    #                     print(repr(data))
+    #                     return repr(data)
     
     async def receive_message(self):
-        while True:
-            try:
-                message_str = await self.app_server.recv(1024).decode(FORMAT)
-                return message_str
-            except:
-                pass
+        
+        loop = asyncio.get_event_loop()
+        
+        # while True:
+        msg = await loop.run_in_executor(None, functools.partial(self.app_server.recv, 1024))
+        print("msg:", msg)
+        
+        msg_str = msg.decode(FORMAT)
+        print(msg_str)
+        
+        return msg_str
+        
+        # while True:
+            
+        #     try:
+        #         message_str = self.app_server.recv(1024)
+        #         message_str = message_str.decode(FORMAT)
+        #         return message_str
+        #     except:
+        #         print("no data from appserver")
     
+    async def looping(self):
+        await asyncio.sleep(0)
     
     
     def sendToServer(self, message_str):

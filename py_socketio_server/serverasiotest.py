@@ -1,7 +1,8 @@
 import asyncio
-from aiohttp import web
+import aiohttp
 import json
 import socket
+import aiohttp.web
 import socketio
 import threading
 
@@ -11,133 +12,139 @@ from TSQueue import TSQueue
 
 SIO_SERVER_PORT = 12123
 
-global asc, app, sio, main_thread
+global asc, app, sio, main_thread, s2w_loop, socketio_loop, runner
 
 s2w_queue = TSQueue()
 
 
-sio = socketio.AsyncServer(async_mode='aiohttp', async_handlers=True, cors_allowed_origins='*')
-app = web.Application()
+sio = socketio.AsyncServer(async_mode='aiohttp', 
+                           async_handlers=True, 
+                           cors_allowed_origins='*')
+app = aiohttp.web.Application()
 sio.attach(app)
 
+
+@sio.on('*')
+def catch_all(event, sid, *args):
+    data = args[0]
+    
+    if event == 'test_message':
+        data["sid"] = sid
+        print('TestMessage with SID from', sid, ':', data)
+        
+        message_str = json.dumps(data)
+        print("Sending message to App Server:", message_str)
+        print(">>Thread:", threading.current_thread().ident)
+        print()
+        
+        asc.sendToServer(message_str)
+        print()
+        
+    # await server_to_web()
+    
 
 @sio.on('connect')
 async def connect(sid, environ):
     print('New connection:', sid)
-    print(">>Thread:", threading.current_thread().ident)
+    # print(">>Thread:", threading.current_thread().ident)
     print()
-    await asyncio.sleep(1)
 
 
-@sio.on('message')
-async def my_message(sid, data):
-    print('Message from', sid, ':', data)
-    print()
-    await asyncio.sleep(1)
+# @sio.on('message')
+# async def my_message(sid, data):
+#     print('Message from', sid, ':', data)
+#     print()
 
 
-@sio.on('test_message')
-async def my_message(sid, data):
+# @sio.on('test_message')
+# async def my_message(sid, data):
     
-    data["sid"] = sid
-    print('TestMessage with SID from', sid, ':', data)
+#     data["sid"] = sid
+#     print('TestMessage with SID from', sid, ':', data)
     
-    # print('Returning message to sid:', sid)
-    # sio.emit(event="server_message", data=data, room=sid)
+#     # print('Returning message to sid:', sid)
+#     # sio.emit(event="server_message", data=data, room=sid)
     
-    message_str = json.dumps(data)
-    print("Sending message to App Server:", message_str)
-    print(">>Thread:", threading.current_thread().ident)
-    print()
+#     message_str = json.dumps(data)
+#     print("Sending message to App Server:", message_str)
+#     print(">>Thread:", threading.current_thread().ident)
+#     print()
     
-    asc.sendToServer(message_str)
-    print()
-    await asyncio.sleep(1)
+#     asc.sendToServer(message_str)
+#     print()
 
 
 @sio.on('disconnect')
 async def disconnect(sid):
     print('Client disconnected:', sid)
     print()
-    await asyncio.sleep(1)
-
-
-
-async def web_to_server():
-    global app
-    print("in Web2Server")
-    
-    web.run_app(app, host='0.0.0.0', port=12123)
-    
-    await asyncio.sleep(1)
-    # eventlet.wsgi.server(eventlet.listen(('', SIO_SERVER_PORT)), app);
 
 
 async def server_to_web():
+    # print("one")
+    # await asyncio.sleep(1)
+    # print("two")
+    
     print("in Server2Web")
-    while(True):
-        server_message_str = asc.receive_message()
+    while True:
+        await asyncio.sleep(0.1)
+        print(">In s2w loop...")
+        
+        server_message_str = await asc.receive_message()
+        
+        print("server_message_str", server_message_str)
         
         server_message_dict = json.loads(server_message_str)
         
         sid = server_message_dict["sid"]
         print("Sending message to web:", server_message_dict)
-        sio.emit(event="server_message", data=server_message_str, room=sid)
+        await sio.emit(event="server_message", data=server_message_str, room=sid)
         # print("Received Message from AppServer:", server_message_str)
         # print("Adding Message to s2w_queue:", server_message_str)
         # s2w_queue.enqueue(server_message_str)
 
 
-# async def poll_s2w():
-#     while(True):
-#         if not await s2w_queue.is_empty():
-#             server_message_str = s2w_queue.dequeue()
-        
-#             print("Removed Message from s2w_queue:", server_message_str)
-            
-#             server_message_dict = json.loads(server_message_str)
-            
-#             sid =  server_message_dict["sid"]
-#             server_message_dict.pop("sid", None)
-            
-#             server_message_str = json.dumps(server_message_dict)
-            
-#             print("Sending message to SID:", sid)
-#             print(">>Message:", server_message_dict)
-#             print(">>Thread:", threading.current_thread().ident)
-#             print(">>ThreadMatch:", threading.current_thread().ident == main_thread)
-#             print()
-            
-#             sio.emit(event="server_message", data=server_message_str, room=sid)
-#     return 0
-
 
 async def main():
-    global asc, app
+    global asc, app, sio
     asc = AppServerConnect()
-    await asyncio.gather(web_to_server(), server_to_web())
+    
+    loop = asyncio.get_event_loop()
+    
+    # ####### socketio server events
+    # runner = aiohttp.web.AppRunner(app)
+    # await runner.setup()
+    # # loop.run_until_complete(runner.setup)
+    
+    # site = aiohttp.web.TCPSite(runner=runner, host='0.0.0.0', port=12123)
+    # await site.start()
+    # # loop.run_until_complete(site.start())
+    
+    
+    # ####### server to web events
+    # task = asyncio.create_task(server_to_web())
+    # # asyncio.ensure_future(server_to_web(), loop=loop)
+    
+    
+    # # loop.run_forever()
+    # await asyncio.Event().wait()
+    
+    
+    await asyncio.gather(
+        aiohttp.web._run_app(app, host='0.0.0.0', port=SIO_SERVER_PORT),
+        server_to_web()
+    )
+    
+    
+    
 
 
 if __name__ == "__main__":
     
     asyncio.run(main())
     
-    # main_thread = threading.current_thread().ident
-    # print("\n*************************************")
-    # print("Main Thread :", threading.current_thread().ident)
-    # print("************************************")
-
+    # main()
+    
     # asc = AppServerConnect()
-
-    # # w2s_thread = threading.Thread(target=web_to_server, name='w2s_thread')
-    # s2w_thread = threading.Thread(target=server_to_web, name='s2w_thread')
-    # # w2s_thread.start()
-    # s2w_thread.start()
-
-    # web.run_app(app, host='0.0.0.0', port=12123)
-
-    # print("asdflasdjkl;fdsajkl;asfdjkl;asjkl;dfjkl;asdjkl;")
-
-    # poll_s2w()
-
+    # aiohttp.web.run_app(app, host='0.0.0.0', port=SIO_SERVER_PORT)
 

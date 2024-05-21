@@ -43,7 +43,6 @@ def my_message(sid, data):
     
     message_str = json.dumps(data)
     print("Sending message to App Server:", message_str)
-    print(">>Thread:", threading.current_thread().ident)
     print()
     
     asc.sendToServer(message_str)
@@ -58,13 +57,13 @@ def disconnect(sid):
 
 
 def web_to_server():
-    while(True):
+    while True:
         pass
     # eventlet.wsgi.server(eventlet.listen(('', SIO_SERVER_PORT)), app);
 
 
 def server_to_web():
-    while(True):
+    while True:
         server_message_str = asc.receive_message()
         
         print("Received Message from AppServer:", server_message_str)
@@ -73,7 +72,7 @@ def server_to_web():
 
 
 def poll_s2w():
-    while(True):
+    while True:
         if not s2w_queue.is_empty():
             server_message_str = s2w_queue.dequeue()
         

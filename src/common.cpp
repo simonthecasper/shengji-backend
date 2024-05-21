@@ -11,7 +11,8 @@ int common::sendThroughSocket(int destination, JSON message_json) {
 int common::sendThroughSocket(int destination, std::string message_str) {
 	m_socket_send_mutex.lock();
 
-	std::cout << "Sending to socketio server: " << message_str << std::endl;
+	std::cout << "Sending through socket " << destination << ": " << message_str << std::endl;
+
 
 	const char* message_char = message_str.c_str();
 	int send_result = send(destination, message_char, (int)strlen(message_char), 0);
@@ -33,10 +34,12 @@ int common::sendThroughSocketSID(JSON message_json) {
 }
 
 int common::sendThroughSocketSID(std::string message_str) {
+	std::cout << "m_socketio_server" << m_socketio_server << std::endl;
+
 	m_socket_send_mutex.lock();
 
-
 	print("Sending to socketio server:" + message_str);
+	std::cout << "Socket:" << m_socketio_server << std::endl;
 
 	const char* message_char = message_str.c_str();
 	int send_result = send(m_socketio_server, message_char, (int)strlen(message_char), 0);
