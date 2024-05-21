@@ -2,6 +2,7 @@ import json
 import socket
 import threading
 from time import sleep
+import asyncio
 
 
 
@@ -29,10 +30,10 @@ class AppServerConnect:
     
     
     
-    def receive_message(self):
+    async def receive_message(self):
         while True:
             try:
-                message_str = self.app_server.recv(1024).decode(FORMAT)
+                message_str = await self.app_server.recv(1024).decode(FORMAT)
                 return message_str
             except:
                 pass
