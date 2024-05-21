@@ -35,40 +35,11 @@ class AppServerConnect:
                 print("Failed connection to AppServer...")
                 print("Trying again shortly\n")
                 sleep(5)
-    
-    
-    # async def receive_message(self):
-        
-    #     while True:
-    #         await asyncio.sleep(0.1)
-    #         print("Reading sockets")
-    #         # Get the list sockets which are readable
-    #         # read_sockets, write_sockets, x_sockets = select.select(
-    #         #     socket_list, [], [])
-            
-    #         socket_list = [self.app_server]
-    #         read_sockets = []
-            
-    #         loop = asyncio.get_event_loop()
-    #         read_sockets, write_sockets, x_sockets = await loop.run_in_executor(_executor, functools.partial(select.select, socket_list, [], [], 1))
-            
 
-    #         for sock in read_sockets:
-    #             #incoming message from remote server
-    #             if sock == self.app_server:
-    #                 data = sock.recv(1024)
-    #                 if not data:
-    #                     print('\nDisconnected from Application Server')
-    #                     break
-    #                 else:
-    #                     print(repr(data))
-    #                     return repr(data)
     
     async def receive_message(self):
-        
         loop = asyncio.get_event_loop()
         
-        # while True:
         msg = await loop.run_in_executor(None, functools.partial(self.app_server.recv, 1024))
         print("msg:", msg)
         
@@ -76,15 +47,7 @@ class AppServerConnect:
         print(msg_str)
         
         return msg_str
-        
-        # while True:
-            
-        #     try:
-        #         message_str = self.app_server.recv(1024)
-        #         message_str = message_str.decode(FORMAT)
-        #         return message_str
-        #     except:
-        #         print("no data from appserver")
+    
     
     async def looping(self):
         await asyncio.sleep(0)
