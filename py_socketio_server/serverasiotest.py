@@ -91,14 +91,5 @@ async def main():
     
 if __name__ == "__main__":    
     asyncio.run(main())
-    
-    
-    message = {
-        room_id: "asdfghjkl",
-        player_id: "qwertyu"
-        task: "chat"
-        message: "hello everyone"
-        
-    }
 
 
