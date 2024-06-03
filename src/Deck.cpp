@@ -8,7 +8,7 @@ Deck::Deck(int number_of_decks, int rank_omit_count) {
 	m_draw_deck = {};
 	m_discard_deck = {};
 	m_kitty = {};
-	
+
 	createDeck(number_of_decks, rank_omit_count, true);
 }
 
@@ -66,7 +66,7 @@ Card* Deck::drawCard() {
 }
 
 
-Card* Deck::getCard(string suit, string value, int id){
+Card* Deck::getCard(string suit, string value, int id) {
 	list<Card*>::iterator  itr = m_all_cards.begin();
 	int i = 0;
 	while (i != id) {
@@ -129,7 +129,7 @@ void Deck::setStrongSuitAndValue(string strong_suit, string value) {
 	value_to_rank["Queen"] = 12;
 	value_to_rank["King"] = 13;
 	value_to_rank["Ace"] = 14;
-	
+
 	list<Card*>::iterator all_card_iter = m_all_cards.begin();
 	int pos = 0;
 

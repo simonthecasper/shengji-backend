@@ -5,7 +5,6 @@
 #include "AcceptedSocket.h"
 #include "SessionManager.h"
 
-#include <mutex>
 #include <memory>
 #include <sys/poll.h>
 #include <sys/ioctl.h>
@@ -26,13 +25,6 @@
 
 #define WEBSOCKET_MAGIC			"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
-// From windows implementation
-// #define CLIENT_CLOSED_PY_LINUX 	1
-// #define CLIENT_CLOSED       	2
-// #define CLIENT_CLOSED_PY    	3
-
-// #define SERVER_IP				"192.168.0.77"
-// #define SERVER_IP				"172.19.128.1"
 #define SERVER_IP				"0.0.0.0"
 #define SERVER_PORT				54329
 
@@ -64,7 +56,6 @@ private:
 	ThreadRoleStruct		m_thread_role_array[MAX_THREADS];
 
 	std::queue<JSON>			m_work_queue;
-	std::queue<ws_conn_hdl>		m_hdl_queue;
 
 	std::mutex				m_queue_control_mutex;
 
@@ -79,7 +70,6 @@ private:
 
 	// Session Managing
 	SessionManager* m_session_manager;
-
 
 	// SocketIO Application Server
 	int m_socketio_server_fd;
@@ -159,16 +149,6 @@ private:
 	// Closes all open sockets in the socket FD array
 	void closeAllSockets();
 
-	// Sends the message to all connected sockets. Used for testing
-	void testSendToAllOthers(int source, std::string message);
-
-	std::string computeSecWebsocketAccept(std::string SecWebsocketKey);
-
-	void doWebsocketUpgrade(int fd_index);
-
-	std::string extractWebsocketKey(std::string http_request);
-
-
 	/*-------------------------------------------*/
 	/*        Multithreading / ThreadPool        */
 	/*-------------------------------------------*/
@@ -187,23 +167,14 @@ private:
 	//		that task needs.
 	void* threadFunction(ThreadRoleEnum role);
 
-	void* threadFunction_ws(ThreadRoleEnum role);
-
 public:
-
-	// Thread safe function that adds a task to the work queue
-	int addToQueue_ws(std::string task, ws_conn_hdl hdl);
-
-	// Thread safe function that adds a task to the work queue
-	int addToQueue_ws(JSON task, ws_conn_hdl hdl);
-
 	int addToQueue(JSON task);
 
 private:
 	// Thread safe function that retrieves a task from the work queue if available
 	JSON getWorkFromQueue();
 
-	std::pair<JSON, ws_conn_hdl> getWorkFromQueue_ws();
+
 
 	/*-------------------------------------------*/
 	/*        SocketIO Application Server        */

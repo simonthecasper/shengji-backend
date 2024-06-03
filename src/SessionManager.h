@@ -14,7 +14,7 @@ class SocketServer;
 class SessionManager
 {
 private:
-	ws_server* m_wss;
+	// ws_server* m_wss;
 
 
 	std::unordered_map<std::string, Session*>
@@ -34,8 +34,6 @@ public:
 
 	void receiveJSON_AppServer(JSON message);
 
-	void receiveWork_ws(std::pair<JSON, ws_conn_hdl> work);
-
 	void removeSocket(int socket);
 
 	void removeSID(std::string sid);
@@ -44,8 +42,6 @@ private:
 	Session* createNewSession();
 
 	int addPlayerToSession(std::string session_id, int player_fd);
-
-	int addPlayerToSession_ws(std::string session_id, ws_conn_hdl player_hdl);
 
 	int addPlayerToSessionSID(std::string session_id, std::string sid);
 

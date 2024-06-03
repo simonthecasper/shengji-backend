@@ -16,7 +16,7 @@ enum MatchState {
 class Session
 {
 private:
-	ws_server* m_wss;
+	// ws_server* m_wss;
 
 	std::string						m_id;
 	Chat* m_chatlog;
@@ -32,13 +32,6 @@ private:
 	unordered_map<int, int>				m_socket_to_id;
 	unordered_map<int, Player*> 		m_id_to_player;
 
-
-	////////////////Web Sockets///////////////////
-	// unordered_set<ws_conn_hdl>			m_player_handles;
-	unordered_map<int, ws_conn_hdl>		m_id_to_handle;
-	// unordered_map<ws_conn_hdl, int>		m_handle_to_id;
-
-
 	/////////SOCKETIO APPLICATION SERVER///////////
 	unordered_map<std::string, int>				m_sid_to_id;
 	unordered_map<int, std::string>				m_id_to_sid;
@@ -52,22 +45,6 @@ public:
 	Session(std::string id);
 
 	void addToChat(JSON message_json);
-
-
-
-	/*-------------------------------------------*/
-	/*                Websocket                  */
-	/*-------------------------------------------*/
-
-	// Accepts the SocketFD for a new player to add to the session and
-	//   return the ID this player gets assigned.
-	int addPlayer_ws(ws_conn_hdl player_hdl);
-
-	void sendToOtherPlayers_ws(int source_player, JSON message);
-
-	void removePlayer_ws(ws_conn_hdl player_hdl);
-
-	void addToChat_ws(msg_hdl_pair);
 
 	/*-------------------------------------------*/
 	/*              Python Client                */

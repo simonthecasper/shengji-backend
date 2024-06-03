@@ -139,18 +139,13 @@ void SocketServer::pollSocketArray() {
 			// Not the listening socket, an existing connection is readable
 			else {
 				SocketReadState socket_state = m_fd_read_state[fd_index];
-				if (socket_state == awaiting_WebSocket_upgrade) {
-					common::print("upgrading websocket (should not be here)");
-					doWebsocketUpgrade(fd_index);
-				}
 
-				else if (socket_state == debug_print) {
+				if (socket_state == debug_print) {
 					common::print("debug printing (should not be here)");
 					char message_buffer[1024];
 					int message_rc = recv(current_fd, message_buffer, 1024, 0);
 
 					std::string message_str(message_buffer);
-
 					std::cout << message_str << std::endl;
 				}
 
@@ -158,7 +153,6 @@ void SocketServer::pollSocketArray() {
 					pollReceiveAndProcessMessage(fd_index);
 				}
 			}
-
 		} // End of loop through pollable descriptors
 
 		// If the compress_array flag was turned on, we need to squeeze
@@ -172,6 +166,7 @@ void SocketServer::pollSocketArray() {
 	// Clean up all of the sockets that are open
 	closeAllSockets();
 }
+
 
 int SocketServer::waitForPoll(int timeout) {
 	int poll_result = poll(m_pollfd_array, m_nfds, timeout);
@@ -204,7 +199,6 @@ void SocketServer::pollAcceptNewConnections() {
 		std::cout << address << ":" << port << std::endl;
 		std::cout << "Socket:" << new_connection->m_socketFD << std::endl;
 
-
 		// Add valid incoming connections to the pollfd structure
 		int new_sd = new_connection->m_socketFD;
 
@@ -214,14 +208,10 @@ void SocketServer::pollAcceptNewConnections() {
 
 		m_fd_read_state[m_nfds] = awaiting_header;
 
-		// int message_size = 1024;
-		// std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
-		// int message_rc = recv(new_sd, message_buffer.get(), 1024, 0);
-
-
 		m_nfds++;
 	} while (true);
 }
+
 
 AcceptedSocket* SocketServer::acceptIncomingConnection(int serverSocketFD) {
 	sockaddr_in clientAddress;
@@ -237,11 +227,8 @@ AcceptedSocket* SocketServer::acceptIncomingConnection(int serverSocketFD) {
 		if (!acceptedSocket->m_accepted_successful) {
 			acceptedSocket->m_error = clientSocketFD;
 		}
-
-		//std::cout << "New connection:" << acceptedSocket->toString() << std::endl;
 		return acceptedSocket;
 	}
-
 	return NULL;
 }
 
@@ -251,7 +238,6 @@ void SocketServer::pollReceiveAndProcessMessage(int fd_index) {
 
 	int message_size = m_fd_message_size[fd_index];
 	std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
-
 
 	//Receive message
 	int message_rc = recv(current_fd, message_buffer.get(), message_size, 0);
@@ -277,35 +263,22 @@ void SocketServer::pollReceiveAndProcessMessage(int fd_index) {
 		message_json["source_fd"] = m_pollfd_array[fd_index].fd;
 		addToQueue(message_json);
 	}
-
-	// PRINTING
-	// std::cout << message_string << std::endl;
-	// if (state == awaiting_header) {
-	// 	std::cout << jsontest.at("message_size") << std::endl;
-	// } else {
-	// 	std::cout << jsontest.at("username") << std::endl;
-	// 	std::cout << jsontest.at("message") << std::endl;
-	// }
 }
+
 
 struct sockaddr_in* SocketServer::createIPv4Address(std::string ip, int port) {
 	struct sockaddr_in* address = new sockaddr_in;
 	address->sin_family = AF_INET;
 	address->sin_port = htons(port);
 
-	if (ip.length() == 0) {
-		address->sin_addr.s_addr = INADDR_ANY;
-	}
-	else {
-		inet_pton(AF_INET, ip.c_str(), &(address->sin_addr.s_addr));
-	}
+	if (ip.length() == 0) { address->sin_addr.s_addr = INADDR_ANY; }
+	else { inet_pton(AF_INET, ip.c_str(), &(address->sin_addr.s_addr)); }
 
 	return address;
 }
 
 int SocketServer::createTCPIPv4Socket() {
-	int a = socket(AF_INET, SOCK_STREAM, 0);
-	return a;
+	return socket(AF_INET, SOCK_STREAM, 0);
 }
 
 void SocketServer::compressFDArray() {
@@ -324,18 +297,14 @@ void SocketServer::compressFDArray() {
 
 bool SocketServer::setCompressFDArrayTrue() {
 	m_mutex_compress_flag.lock();
-
 	m_compress_fd_array = true;
-
 	m_mutex_compress_flag.unlock();
 	return true;
 }
 
 bool SocketServer::setCompressFDArrayFalse() {
 	m_mutex_compress_flag.lock();
-
 	m_compress_fd_array = false;
-
 	m_mutex_compress_flag.unlock();
 	return true;
 }
@@ -362,68 +331,59 @@ void SocketServer::closeAllSockets() {
 	}
 }
 
-void SocketServer::testSendToAllOthers(int source, std::string message) {
-	for (int i = 0; i < m_nfds; i++) {
-		int dest = m_pollfd_array[i].fd;
-		if (dest != source && dest != m_serverSocketFD) {
-			int send_result = common::sendThroughSocket(dest, message);
-		}
-	}
-}
+// std::string SocketServer::computeSecWebsocketAccept(std::string SecWebsocketKey) {
+// 	std::string key_appended = SecWebsocketKey + WEBSOCKET_MAGIC;
+// 	const unsigned char* to_encode = (const unsigned char*)(key_appended.c_str());
+// 	unsigned char hash[20];
 
-std::string SocketServer::computeSecWebsocketAccept(std::string SecWebsocketKey) {
-	std::string key_appended = SecWebsocketKey + WEBSOCKET_MAGIC;
-	const unsigned char* to_encode = (const unsigned char*)(key_appended.c_str());
-	unsigned char hash[20];
+// 	SHA1(to_encode, sizeof(to_encode) - 1, hash);
+// 	std::string accept_encoded = common::base64_encode(hash, 20);
 
-	SHA1(to_encode, sizeof(to_encode) - 1, hash);
-	std::string accept_encoded = common::base64_encode(hash, 20);
+// 	return accept_encoded;
+// }
 
-	return accept_encoded;
-}
+// void SocketServer::doWebsocketUpgrade(int fd_index) {
+// 	int current_fd = m_pollfd_array[fd_index].fd;
 
-void SocketServer::doWebsocketUpgrade(int fd_index) {
-	int current_fd = m_pollfd_array[fd_index].fd;
+// 	int message_size = 1024;
+// 	std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
 
-	int message_size = 1024;
-	std::unique_ptr<char[]> message_buffer = std::make_unique<char[]>(message_size);
+// 	int message_rc = recv(current_fd, message_buffer.get(), 1024, 0);
 
-	int message_rc = recv(current_fd, message_buffer.get(), 1024, 0);
+// 	std::string message_string(message_buffer.get());
+// 	std::cout << message_string << std::endl;
+// 	std::cout << message_string.length() << std::endl;
 
-	std::string message_string(message_buffer.get());
-	std::cout << message_string << std::endl;
-	std::cout << message_string.length() << std::endl;
+// 	std::string upgrade_request(message_buffer.get());
 
-	std::string upgrade_request(message_buffer.get());
+// 	std::string websocket_key = extractWebsocketKey(upgrade_request);
 
-	std::string websocket_key = extractWebsocketKey(upgrade_request);
+// 	std::cout << websocket_key << std::endl;
 
-	std::cout << websocket_key << std::endl;
+// 	std::string upgrade_response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ";
+// 	upgrade_response += computeSecWebsocketAccept(websocket_key);
+// 	upgrade_response += "\r\n\r\n";
 
-	std::string upgrade_response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ";
-	upgrade_response += computeSecWebsocketAccept(websocket_key);
-	upgrade_response += "\r\n\r\n";
+// 	common::sendThroughSocket(current_fd, upgrade_response);
+// 	m_fd_read_state[fd_index] = awaiting_header;
+// 	// m_fd_read_state[fd_index] = debug_print;
+// }
 
-	common::sendThroughSocket(current_fd, upgrade_response);
-	m_fd_read_state[fd_index] = awaiting_header;
-	// m_fd_read_state[fd_index] = debug_print;
-}
+// std::string SocketServer::extractWebsocketKey(std::string http_request) {
+// 	std::string s = http_request;
+// 	int length = s.length();
 
-std::string SocketServer::extractWebsocketKey(std::string http_request) {
-	std::string s = http_request;
-	int length = s.length();
+// 	std::string token = "Sec-WebSocket-Key: ";
+// 	int start = s.find(token) + token.length();
 
-	std::string token = "Sec-WebSocket-Key: ";
-	int start = s.find(token) + token.length();
+// 	std::string key_to_end = s.substr(start, s.length() - 1);
 
-	std::string key_to_end = s.substr(start, s.length() - 1);
+// 	int end = key_to_end.find("\r\n");
 
-	int end = key_to_end.find("\r\n");
+// 	std::string key = s.substr(start, end);
 
-	std::string key = s.substr(start, end);
-
-	return key;
-}
+// 	return key;
+// }
 
 
 /*-------------------------------------------*/
@@ -470,8 +430,6 @@ void* SocketServer::threadFunction(ThreadRoleEnum role) {
 			break;
 
 		case work:
-			// JSON removed = getWorkFromQueue();
-
 			removed_json = getWorkFromQueue();
 
 			if (!common::stringCompare(removed_json.at("stage"), "empty")) {
@@ -496,46 +454,45 @@ void* SocketServer::threadFunction(ThreadRoleEnum role) {
 }
 
 
-void* SocketServer::threadFunction_ws(ThreadRoleEnum role) {
+// void* SocketServer::threadFunction_ws(ThreadRoleEnum role) {
+// 	std::pair<JSON, ws_conn_hdl> removed_pair;
+// 	JSON removed_json;
+// 	ws_conn_hdl removed_hdl;
 
-	std::pair<JSON, ws_conn_hdl> removed_pair;
-	JSON removed_json;
-	ws_conn_hdl removed_hdl;
+// 	while (true) {
+// 		switch (role) {
+// 		case listen_incoming_data:
+// 			pollSocketArray();
+// 			break;
 
-	while (true) {
-		switch (role) {
-		case listen_incoming_data:
-			pollSocketArray();
-			break;
+// 		case work:
+// 			// JSON removed = getWorkFromQueue();
 
-		case work:
-			// JSON removed = getWorkFromQueue();
+// 			removed_pair = getWorkFromQueue_ws();
+// 			removed_json = removed_pair.first;
+// 			removed_hdl = removed_pair.second;
 
-			removed_pair = getWorkFromQueue_ws();
-			removed_json = removed_pair.first;
-			removed_hdl = removed_pair.second;
+// 			// Printing
+// 			if (!common::stringCompare(removed_json.at("stage"), "empty")) {
+// 				if (common::stringCompare(removed_json.at("stage"), "chat")) {
+// 					std::cout << "username:" << removed_json.at("username") << std::endl;
+// 					std::cout << "message:" << removed_json.at("message") << std::endl;
+// 					std::cout << "message thread ID" << syscall(__NR_gettid) << "\n" << std::endl;
 
-			// Printing
-			if (!common::stringCompare(removed_json.at("stage"), "empty")) {
-				if (common::stringCompare(removed_json.at("stage"), "chat")) {
-					std::cout << "username:" << removed_json.at("username") << std::endl;
-					std::cout << "message:" << removed_json.at("message") << std::endl;
-					std::cout << "message thread ID" << syscall(__NR_gettid) << "\n" << std::endl;
+// 					std::string username(removed_json.at("username"));
+// 					std::string message_contents(removed_json.at("message"));
+// 					std::string testmessage = "\n" + username + ":" + message_contents;
+// 				}
+// 				//testSendToAllOthers(removed.at("source_fd"), testmessage);
+// 				// m_session_manager->receiveJSON(removed);
 
-					std::string username(removed_json.at("username"));
-					std::string message_contents(removed_json.at("message"));
-					std::string testmessage = "\n" + username + ":" + message_contents;
-				}
-				//testSendToAllOthers(removed.at("source_fd"), testmessage);
-				// m_session_manager->receiveJSON(removed);
-
-				m_session_manager->receiveWork_ws(removed_pair);
-			}
-			break;
-		}
-	}
-	return NULL;
-}
+// 				m_session_manager->receiveWork_ws(removed_pair);
+// 			}
+// 			break;
+// 		}
+// 	}
+// 	return NULL;
+// }
 
 
 int SocketServer::addToQueue(JSON task) {
@@ -546,18 +503,18 @@ int SocketServer::addToQueue(JSON task) {
 }
 
 
-int SocketServer::addToQueue_ws(std::string task, ws_conn_hdl hdl) {
-	JSON task_json = JSON::parse(task);
-	return addToQueue_ws(task_json, hdl);
-}
+// int SocketServer::addToQueue_ws(std::string task, ws_conn_hdl hdl) {
+// 	JSON task_json = JSON::parse(task);
+// 	return addToQueue_ws(task_json, hdl);
+// }
 
-int SocketServer::addToQueue_ws(JSON task, ws_conn_hdl hdl) {
-	m_queue_control_mutex.lock();
-	m_work_queue.push(task);
-	m_hdl_queue.push(hdl);
-	m_queue_control_mutex.unlock();
-	return 0;
-}
+// int SocketServer::addToQueue_ws(JSON task, ws_conn_hdl hdl) {
+// 	m_queue_control_mutex.lock();
+// 	m_work_queue.push(task);
+// 	m_hdl_queue.push(hdl);
+// 	m_queue_control_mutex.unlock();
+// 	return 0;
+// }
 
 JSON SocketServer::getWorkFromQueue() {
 	m_queue_control_mutex.lock();
@@ -571,26 +528,24 @@ JSON SocketServer::getWorkFromQueue() {
 	return ret;
 }
 
-std::pair<JSON, ws_conn_hdl> SocketServer::getWorkFromQueue_ws() {
-	m_queue_control_mutex.lock();
+// std::pair<JSON, ws_conn_hdl> SocketServer::getWorkFromQueue_ws() {
+// 	m_queue_control_mutex.lock();
 
-	std::pair<JSON, ws_conn_hdl> ret;
+// 	std::pair<JSON, ws_conn_hdl> ret;
 
-	ret.first = JSON::parse("{\"stage\" : \"empty\"}");
+// 	ret.first = JSON::parse("{\"stage\" : \"empty\"}");
 
-	if (m_work_queue.size() != 0) {
-		ret.first = m_work_queue.front();
-		m_work_queue.pop();
+// 	if (m_work_queue.size() != 0) {
+// 		ret.first = m_work_queue.front();
+// 		m_work_queue.pop();
 
-		ret.second = m_hdl_queue.front();
-		m_hdl_queue.pop();
-	}
+// 		ret.second = m_hdl_queue.front();
+// 		m_hdl_queue.pop();
+// 	}
+// 	m_queue_control_mutex.unlock();
 
-
-	m_queue_control_mutex.unlock();
-
-	return ret;
-}
+// 	return ret;
+// }
 
 
 /////APP SERVER
@@ -598,7 +553,6 @@ std::pair<JSON, ws_conn_hdl> SocketServer::getWorkFromQueue_ws() {
 
 void SocketServer::initThreadsAppServer() {
 	//Create worker threads
-
 	int thread_start = THREAD_START;
 	for (int i = thread_start; i < MAX_THREADS; i++) {
 		m_thread_role_array[i].server = this;
@@ -707,12 +661,8 @@ void SocketServer::pollSocketArrayAppServer() {
 			// Not the listening socket, an existing connection is readable
 			else {
 				SocketReadState socket_state = m_fd_read_state[fd_index];
-				if (socket_state == awaiting_WebSocket_upgrade) {
-					common::print("upgrading websocket (should not be here)");
-					doWebsocketUpgrade(fd_index);
-				}
 
-				else if (socket_state == debug_print) {
+				if (socket_state == debug_print) {
 					common::print("debug printing (should not be here)");
 					char message_buffer[1024];
 					int message_rc = recv(current_fd, message_buffer, 1024, 0);

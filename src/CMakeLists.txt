@@ -11,8 +11,7 @@ set(SOURCE_FILES
     Session.cpp
     Chat.cpp
     common.cpp
-    Player.cpp
-    WebsocketServer.cpp)
+    Player.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
