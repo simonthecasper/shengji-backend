@@ -63,7 +63,6 @@ std::string SessionManager::generateSessionID() {
     return random_string;
 }
 
-
 void SessionManager::receiveJSON(JSON message) {
     std::string stage = message.at("stage");
 
@@ -102,7 +101,6 @@ void SessionManager::receiveJSON(JSON message) {
     }
 
 }
-
 
 void SessionManager::receiveWork_ws(std::pair<JSON, ws_conn_hdl> work) {
     JSON message = work.first;
@@ -169,6 +167,12 @@ void SessionManager::receiveJSON_AppServer(JSON message) {
         }
         else if (common::stringCompare(task, "join_session")) {
             std::string session_id = message.at("session_id");
+
+            if (!ifSessionIDExists(session_id)) {
+                common::print("Session ID not found: " + session_id);
+                return;
+            }
+
             int source_fd = message.at("source_fd");
             int player_id = addPlayerToSession(session_id, source_fd);
             linkSocketToSessionID(source_fd, session_id);

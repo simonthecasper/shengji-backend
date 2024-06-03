@@ -38,6 +38,7 @@ private:
 	unordered_map<int, ws_conn_hdl>		m_id_to_handle;
 	// unordered_map<ws_conn_hdl, int>		m_handle_to_id;
 
+
 	/////////SOCKETIO APPLICATION SERVER///////////
 	unordered_map<std::string, int>				m_sid_to_id;
 	unordered_map<int, std::string>				m_id_to_sid;
@@ -91,15 +92,13 @@ public:
 
 	void removePlayerSID(std::string sid);
 
-	void addToChatSID(JSON message, std::string sid);
+	void addToChat_SID(JSON message, std::string sid);
 
 
 
 	/*-------------------------------------------*/
 	/*                 Common                    */
 	/*-------------------------------------------*/
-
-
 
 	int generateID();
 

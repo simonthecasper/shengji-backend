@@ -1,0 +1,8 @@
+Shengji-Backend
+
+- Make Game object
+
+- Standardize messaging vocabulary
+
+- Make general message handler that redirects to the correct specific handler (eg. chat, game, etc)
+-- Make specific message handlers

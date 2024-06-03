@@ -21,7 +21,6 @@ int main() {
 
 
 int serverTesting() {
-	// WebsocketServer s;
 	SocketServer s;
 	s.runServerAsAppServer();
 	return 0;

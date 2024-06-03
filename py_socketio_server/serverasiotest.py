@@ -72,9 +72,9 @@ async def server_to_web():
         print("Sending message to web:", server_message_dict)
         
         server_message_dict.pop('sid', None)
+        server_message_str = json.dumps(server_message_dict)
         
         await sio.emit(event="server_message", data=server_message_str, room=sid)
-
 
 
 async def main():
@@ -89,9 +89,16 @@ async def main():
     )
     
     
-    
 if __name__ == "__main__":    
     asyncio.run(main())
     
+    
+    message = {
+        room_id: "asdfghjkl",
+        player_id: "qwertyu"
+        task: "chat"
+        message: "hello everyone"
+        
+    }
 
 

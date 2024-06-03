@@ -53,8 +53,6 @@ private:
 
 	void linkSIDToSessionID(std::string sid, std::string id);
 
-
-
 	bool ifSessionIDExists(std::string id);
 
 	std::string generateSessionID();

@@ -22,6 +22,4 @@ find_package(OpenSSL REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads OpenSSL::SSL)
 
 
-
-
 # install(TARGETS ${PROJECT_NAME} DESTINATION bin)
