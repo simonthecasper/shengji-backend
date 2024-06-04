@@ -12,12 +12,13 @@ using JSON = nlohmann::json;
 class Chat
 {
 private:
+	//change from JSON to std::pair??
 	std::list<JSON> m_chatlog;
 	std::mutex		m_mutex_chatlog;
 
 public:
 	Chat();
 
-	int addToChat(int player_id, std::string message);
+	int addToChat(std::string player_id, std::string message);
 };
 

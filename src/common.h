@@ -6,6 +6,7 @@
 #include <list>
 #include <mutex>
 #include <queue>
+#include <random>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -18,7 +19,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "json.hpp"
+#include "../include-3p/json.hpp"
 
 
 using JSON = nlohmann::json;
@@ -28,10 +29,8 @@ typedef unsigned char BYTE;
 namespace common {
 
 	static std::mutex m_socket_send_mutex;
-
 	static int m_socketio_server;
 
-	void setSocketIOServerFD(int fd);
 
 	int sendThroughSocket(int destination, JSON message_json);
 
@@ -47,4 +46,5 @@ namespace common {
 
 	void print(std::string s);
 
+	void setSocketIOServerFD(int fd);
 }

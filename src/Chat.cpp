@@ -6,7 +6,7 @@ Chat::Chat() {
 }
 
 
-int Chat::addToChat(int player_id, std::string message) {
+int Chat::addToChat(std::string player_id, std::string message) {
 	m_mutex_chatlog.lock();
 
 	JSON message_json;

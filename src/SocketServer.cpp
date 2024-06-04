@@ -15,6 +15,7 @@ SocketServer::SocketServer() {
 	initMutex();
 }
 
+
 /*-------------------------------------------*/
 /*                  Basics                   */
 /*-------------------------------------------*/
@@ -85,6 +86,7 @@ void SocketServer::printIP() {
 /*-------------------------------------------*/
 /*        Poll and Socket Connections        */
 /*-------------------------------------------*/
+
 void SocketServer::pollSocketArrayAppServer() {
 	// Set the listen back log
 	int		listen_result = listen(m_serverSocketFD, LISTEN_BACKLOG);

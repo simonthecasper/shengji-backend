@@ -1,12 +1,12 @@
 #include "Player.h"
 #include "Play.h"
 
-Player::Player(int id) {
+Player::Player(std::string id) {
 	m_id = id;
 }
 
 
-Player::Player(int id, string name) {
+Player::Player(std::string id, string name) {
 	m_id = id;
 	m_name = name;
 	//m_scoring = scoring;
@@ -51,7 +51,7 @@ string Player::getName() const {
 	return m_name;
 }
 
-int Player::getID() const {
+std::string Player::getID() const {
 	return m_id;
 }
 

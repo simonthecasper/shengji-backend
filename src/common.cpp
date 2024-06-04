@@ -26,7 +26,6 @@ int common::sendThroughSocket(int destination, std::string message_str) {
 	return 0;
 }
 
-
 int common::sendThroughSocketSID(JSON message_json) {
 	std::string message_str = message_json.dump();
 	return sendThroughSocketSID(message_str);

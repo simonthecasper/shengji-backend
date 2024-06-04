@@ -5,18 +5,18 @@
 class Player
 {
 private:
-	int m_id;
-	string m_name;
+	std::string m_id;
+	std::string m_name;
 	bool m_scoring;
 	int m_team;
 
 	set<Card*> m_hand;
 
 public:
-	Player(int id);
+	Player(std::string id);
 
 
-	Player(int id, string name);
+	Player(std::string id, string name);
 
 
 	//Changes scoring status of player
@@ -28,8 +28,7 @@ public:
 
 
 	//Returns the assigned ID of the player
-	int getID() const;
-
+	std::string getID() const;
 
 	//Given a suit, rank, and id, returns whether this player has this card in
 	//	their hand
@@ -38,13 +37,10 @@ public:
 	//Returns true if the requested Card* is in the players hand
 	bool ifHasCard(Card* card);
 
-
 	Card* pickCard(Card* card);
-
 
 	//Adds the provided card to the hand of the player
 	void addCardToHand(Card* card);
-
 
 	//Returns the hand of cards this player has
 	set<Card*> getHand() const;
