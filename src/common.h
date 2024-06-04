@@ -31,6 +31,7 @@ namespace common {
 
 	static int m_socketio_server;
 
+	void setSocketIOServerFD(int fd);
 
 	int sendThroughSocket(int destination, JSON message_json);
 

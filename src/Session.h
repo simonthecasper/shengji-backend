@@ -5,25 +5,14 @@
 #include "Player.h"
 #include "Chat.h"
 
-class SocketServer;
-
-enum MatchState {
-	DRAWING,
-	AWAITING_TRICK_START,
-	AWAITING_TRICK_FOLLOW
-};
 
 class Session
 {
 private:
-	// ws_server* m_wss;
-
 	std::string						m_id;
 	Chat* m_chatlog;
 
-
 	set<Player*>					m_player_list;
-
 	unordered_set<int>				m_player_ids;
 
 	////////////////PLAIN SOCKETS/////////////////
@@ -52,11 +41,11 @@ public:
 
 	// Accepts the SocketFD for a new player to add to the session and
 	//   return the ID this player gets assigned.
-	int addPlayer(int player_fd);
+	// int addPlayer(int player_fd);
 
 	void sendToOtherPlayers(int source_player, JSON message);
 
-	void removePlayer(int socket);
+	// void removePlayer(int socket);
 
 
 	/*-------------------------------------------*/
@@ -65,7 +54,7 @@ public:
 
 	int addPlayerSID(std::string sid);
 
-	void sendToOtherPlayersSID(int source_player, JSON message);
+	void sendToOtherPlayersSID(std::string source_sid, JSON message);
 
 	void removePlayerSID(std::string sid);
 

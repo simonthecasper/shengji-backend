@@ -23,15 +23,13 @@
 #define FD_ARRAY_SIZE       	200
 #define LISTEN_BACKLOG      	32
 
-#define WEBSOCKET_MAGIC			"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-
 #define SERVER_IP				"0.0.0.0"
 #define SERVER_PORT				54329
 
 class SocketServer;
 
 enum ThreadRoleEnum { listen_incoming_data, work };
-enum SocketReadState { awaiting_WebSocket_upgrade, awaiting_header, awaiting_body, debug_print };
+enum SocketReadState { awaiting_header, awaiting_body };
 
 
 struct ThreadRoleStruct {
@@ -87,8 +85,6 @@ public:
 	/*-------------------------------------------*/
 	void runServerAsAppServer();
 
-	void runServerStandalone();
-
 private:
 	void initServer();
 
@@ -109,7 +105,7 @@ private:
 	// Runs the basic poll loop to read incoming data from sockets.
 	// This is the work function of the thread that is assigned the
 	//	 listen_incoming_data role
-	void pollSocketArray();
+	void pollSocketArrayAppServer();
 
 	// Calls poll with the provided timeout value and returns the poll result.
 	// Exits the program if poll fails.
@@ -149,35 +145,9 @@ private:
 	// Closes all open sockets in the socket FD array
 	void closeAllSockets();
 
+
 	/*-------------------------------------------*/
 	/*        Multithreading / ThreadPool        */
-	/*-------------------------------------------*/
-
-	// Initializes all threads and assigns them their respective roles
-	int initThreadsStandalone();
-
-	// Static thread function wrapper to get rid of the hidden "this" parameter
-	static void* staticThreadFunction(void* args);
-
-	// Thread function that does work depending on the role given to the thread.
-	// Threads have 2 possible roles:
-	//	--listen_incoming_data: reads if there is any new data from sockets.
-	//	 	Only 1 thread will be assigned to this role.
-	//  --work: retrieves work from the threadpool queue and does whatever
-	//		that task needs.
-	void* threadFunction(ThreadRoleEnum role);
-
-public:
-	int addToQueue(JSON task);
-
-private:
-	// Thread safe function that retrieves a task from the work queue if available
-	JSON getWorkFromQueue();
-
-
-
-	/*-------------------------------------------*/
-	/*        SocketIO Application Server        */
 	/*-------------------------------------------*/
 
 	void initThreadsAppServer();
@@ -193,5 +163,9 @@ private:
 	//		that task needs.
 	void* threadFunctionAppServer(ThreadRoleEnum role);
 
-	void pollSocketArrayAppServer();
+	int addToQueue(JSON task);
+
+private:
+	// Thread safe function that retrieves a task from the work queue if available
+	JSON getWorkFromQueue();
 };

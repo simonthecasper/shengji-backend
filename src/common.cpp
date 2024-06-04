@@ -33,12 +33,10 @@ int common::sendThroughSocketSID(JSON message_json) {
 }
 
 int common::sendThroughSocketSID(std::string message_str) {
-	std::cout << "m_socketio_server" << m_socketio_server << std::endl;
-
 	m_socket_send_mutex.lock();
 
-	print("Sending to socketio server:" + message_str);
-	std::cout << "Socket:" << m_socketio_server << std::endl;
+	print("Sending to socketio server: " + message_str);
+	std::cout << "Socket: " << m_socketio_server << std::endl;
 
 	const char* message_char = message_str.c_str();
 	int send_result = send(m_socketio_server, message_char, (int)strlen(message_char), 0);
@@ -66,4 +64,8 @@ bool common::stringCompare(std::string s1, std::string s2) {
 
 void common::print(std::string s) {
 	std::cout << s << std::endl;
+}
+
+void common::setSocketIOServerFD(int fd) {
+	m_socketio_server = fd;
 }
