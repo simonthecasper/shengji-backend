@@ -53,7 +53,7 @@ private:
 	pthread_t				m_thread_pool[MAX_THREADS];
 	ThreadRoleStruct		m_thread_role_array[MAX_THREADS];
 
-	std::queue<JSON>			m_work_queue;
+	std::queue<JSON>		m_work_queue;
 
 	std::mutex				m_queue_control_mutex;
 
@@ -71,8 +71,6 @@ private:
 
 	// SocketIO Application Server
 	int m_socketio_server_fd;
-
-
 
 	/*-------------------------------------------*/
 	/*                Constructor                */
