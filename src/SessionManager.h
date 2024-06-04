@@ -27,18 +27,12 @@ private:
 
 public:
 
-	// void receiveJSON(JSON message);
-
 	void receiveJSON_AppServer(JSON message);
-
-	// void removeSocket(int socket);
 
 	void removeSID(std::string sid);
 
 private:
 	Session* createNewSession();
-
-	// int addPlayerToSession(std::string session_id, int player_fd);
 
 	int addPlayerToSessionSID(std::string session_id, std::string sid);
 

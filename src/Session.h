@@ -39,13 +39,8 @@ public:
 	/*              Python Client                */
 	/*-------------------------------------------*/
 
-	// Accepts the SocketFD for a new player to add to the session and
-	//   return the ID this player gets assigned.
-	// int addPlayer(int player_fd);
-
 	void sendToOtherPlayers(int source_player, JSON message);
 
-	// void removePlayer(int socket);
 
 
 	/*-------------------------------------------*/
