@@ -1,7 +1,7 @@
 #include "SessionManager.h"
 
 
-void SessionManager::receiveJSON_AppServer(JSON message) {
+void SessionManager::handleMessage(JSON message) {
     std::string message_as_string = message.dump();
     common::print("Received from socketio server:" + message_as_string);
 

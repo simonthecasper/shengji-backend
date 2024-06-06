@@ -2,6 +2,10 @@
 #include <time.h>
 #include <iostream>
 
+Deck::Deck() {
+
+}
+
 Deck::Deck(int number_of_decks, int rank_omit_count) {
 	m_all_cards = {};
 	m_new_deck = {};
@@ -9,11 +13,11 @@ Deck::Deck(int number_of_decks, int rank_omit_count) {
 	m_discard_deck = {};
 	m_kitty = {};
 
-	createDeck(number_of_decks, rank_omit_count, true);
+	createDeck(number_of_decks, rank_omit_count);
 }
 
 
-void Deck::createDeck(int number_of_decks, int rank_omit_count, bool leaveShengJiGap) {
+void Deck::createDeck(int number_of_decks, int rank_omit_count) {
 	int id = 0;
 	for (int deck = 0; deck < number_of_decks; deck++) {
 		for (string suit : m_suits) {
@@ -83,7 +87,6 @@ Card* Deck::getCard(string suit, string value, int id) {
 }
 
 
-
 string Deck::printRankOrder() {
 	list<Card*>::iterator draw_search = m_all_cards.begin();
 	int pos = 0;
@@ -141,6 +144,7 @@ void Deck::setStrongSuitAndValue(string strong_suit, string value) {
 }
 
 
+// TODO
 int Deck::deleteDeck() {
 	return 0;
 }

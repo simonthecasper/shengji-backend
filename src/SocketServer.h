@@ -40,9 +40,7 @@ struct ThreadRoleStruct {
 };
 
 
-class SocketServer
-{
-
+class SocketServer {
 private:
 	// Server IP
 	int						m_serverSocketFD;
@@ -163,7 +161,6 @@ private:
 
 	int addToQueue(JSON task);
 
-private:
 	// Thread safe function that retrieves a task from the work queue if available
 	JSON getWorkFromQueue();
 };

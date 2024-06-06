@@ -3,7 +3,6 @@
 #include "Session.h"
 
 #define ID_LENGTH	6
-#define	ID_MAX		10000
 
 
 class SessionManager
@@ -19,7 +18,7 @@ private:
 		m_sid_to_sessionid;
 
 public:
-	void receiveJSON_AppServer(JSON message);
+	void handleMessage(JSON message);
 
 	void removeSID(std::string sid);
 

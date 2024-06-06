@@ -1,6 +1,10 @@
 #include "Play.h"
 
 
+Play::Play() {
+
+}
+
 Play::Play(Player* source) {
 	m_source = source;
 }
@@ -10,9 +14,6 @@ void Play::makeStartPlay(unordered_map<string, int> structure, set<Card*> cards)
 	m_cards = cards;
 	m_valid = true;
 
-	/*if (!throw) {
-
-	}*/
 	setHighCard();
 }
 
@@ -27,12 +28,12 @@ void Play::makeFollowPlay(Play* starter, set<Card*> cards, bool valid) {
 }
 
 
-unordered_map<string, int> Play::getStructure() const{
+unordered_map<string, int> Play::getStructure() const {
 	return m_structure;
 }
 
 
-bool Play::isValid() const{
+bool Play::isValid() const {
 	return m_valid;
 }
 
@@ -61,21 +62,18 @@ string Play::toString() const {
 //Returns 0 if comparison is void
 int Play::isLessThan(const Play& other) const {
 	if (m_valid && other.isValid()) {  //both valid or invalid
-		if (m_valid) {
+		if (m_valid)
 			//both valid
 			return m_high_card->isLessThan(*(other.getHighCard()));
-		}
-		else {
+		else
 			//both not valid
 			return 0;
-		}
-	} else {
-		if (m_valid) {
+	}
+	else {
+		if (m_valid)
 			return -1;
-		}
-		else {
+		else
 			return 1;
-		}
 	}
 	return 0;
 }
