@@ -1,8 +1,15 @@
 Shengji-Backend
 
-- Make Game object
+
+TODO:
+- Implement Game object functions
 
 - Standardize messaging vocabulary
 
 - Make general message handler that redirects to the correct specific handler (eg. chat, game, etc)
 -- Make specific message handlers
+
+
+COMPLETED:
+- Created message catalog
+- Created Game object header

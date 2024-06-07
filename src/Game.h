@@ -55,7 +55,7 @@ private:
     void setLordPlayer(Player* lord_player);
 
     // Sets trick starter player and informs all players in the session of this change
-    void setTrickStarterPlayer(Player* trick_starter_player);
+    void setTrickStarterPlayer(Player* trick_starter);
 
     // Moves the expected player to the next player in the ordering
     void incrementExpectedPlayer();
