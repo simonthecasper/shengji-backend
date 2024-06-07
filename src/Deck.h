@@ -16,8 +16,10 @@ private:
 	unordered_map<string, int> m_suit_rank;
 
 	list<Card*>::iterator m_draw_deck_top;
-	
+
 public:
+	Deck();
+
 	Deck(int number_of_decks, int rank_omit_count);
 
 	//Shuffles all cards into the draw_deck. The original deck is still maintained.
@@ -27,12 +29,17 @@ public:
 	Card* drawCard();
 
 	//Card* drawCards(int amount);
+
+
+	// Returns the pointer to the Card object with the provided suit, value, and id.
+	// If no card exists with the provided identifying info, returns std::nullptr
 	Card* getCard(string suit, string value, int id);
 
 
 	//Prints out all cards in order of their ranks (debugging)
 	string printRankOrder();
-	
+
+
 	//Sets the strong suit and strong value for all the cards in the deck.
 	void setStrongSuitAndValue(string strong_suit, string value);
 
@@ -44,6 +51,6 @@ public:
 
 private:
 	//Creates a blank standard deck
-	void createDeck(int number_of_decks, int rank_omit_count,bool leaveShengJiGap);
+	void createDeck(int number_of_decks, int rank_omit_count);
 };
 

@@ -1,6 +1,11 @@
 #include "Player.h"
 #include "Play.h"
 
+
+Player::Player() {
+
+}
+
 Player::Player(std::string id) {
 	m_id = id;
 }
@@ -12,6 +17,29 @@ Player::Player(std::string id, string name) {
 	//m_scoring = scoring;
 }
 
+void Player::toggleScoring() {
+	m_scoring = !m_scoring;
+}
+
+string Player::getName() const {
+	return m_name;
+}
+
+std::string Player::getID() const {
+	return m_id;
+}
+
+bool Player::isScoring() const {
+	return m_scoring;
+}
+
+void Player::setTeam(std::string team) {
+	m_team = team;
+}
+
+std::string Player::getTeam() const {
+	return m_team;
+}
 
 void Player::addCardToHand(Card* card) {
 	m_hand.insert(card);
@@ -43,17 +71,7 @@ bool Player::ifHasCard(Card* card) {
 //}
 
 
-void Player::toggleScoring() {
-	m_scoring = !m_scoring;
-}
 
-string Player::getName() const {
-	return m_name;
-}
-
-std::string Player::getID() const {
-	return m_id;
-}
 
 set<Card*> Player::getHand() const {
 	return m_hand;
@@ -64,7 +82,3 @@ int Player::getHandSize() const {
 	return m_hand.size();
 }
 
-
-bool Player::isScoring() const {
-	return m_scoring;
-}

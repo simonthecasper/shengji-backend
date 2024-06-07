@@ -6,8 +6,7 @@
 using namespace std;
 
 
-class Card
-{
+class Card {
 private:
     string m_suit;
     string m_value;
@@ -17,17 +16,17 @@ private:
 
     //Unique number assigned to each card to differentiate cards with identical ranks and suits.
     int m_id;
-    
+
     unordered_map<string, int> m_suit_rank;
 
 public:
-    
+
     int testfield;
 
     Card();
 
     Card(string suit_con, int rank_con, int id);
-    
+
     //Returns the suit of the card as a string
     string getSuit() const;
 
@@ -68,8 +67,8 @@ public:
     //Returns true if left Card has a value smaller than right.
     //Returns false if left Card has a value larger than right,
     //        or if two cards of different weak suits are being compared.
-    bool operator<(const Card &other) const;
-    
+    bool operator<(const Card& other) const;
+
     //Returns true if left Card has a value larger than right.
     //Returns false if left Card has a value smaller than right,
     //        or if two cards of different weak suits are being compared.

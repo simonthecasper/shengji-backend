@@ -365,7 +365,7 @@ void* SocketServer::threadFunctionAppServer(ThreadRoleEnum role) {
 					std::string testmessage = "\n" + username + ":" + message_contents;
 				}
 
-				m_session_manager->receiveJSON_AppServer(removed_json);
+				m_session_manager->handleMessage(removed_json);
 			}
 			break;
 		}

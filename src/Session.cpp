@@ -7,6 +7,10 @@ Session::Session(std::string id) {
 	m_player_count = 0;
 }
 
+void handleMessage(JSON message_json) {
+
+}
+
 void Session::addToChat(JSON message_json) {
 	std::string player_id = message_json.at("player_id");
 	std::string message = message_json.at("message");
@@ -56,16 +60,21 @@ void Session::removePlayerSID(std::string sid) {
 }
 
 std::string Session::generatePlayerID() {
-	const string CHARACTERS = "abcdefghijklmnopqrstuv";
+	std::string random_string = "";
+	do {
+		const string CHARACTERS = "abcdefghijklmnopqrstuv";
 
-	random_device rd;
-	mt19937 generator(rd());
-	uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
+		random_device rd;
+		mt19937 generator(rd());
+		uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
 
-	std::string random_string = "p_";
-	for (int i = 0; i < PLAYER_ID_LENGTH - 2; ++i) {
-		random_string += CHARACTERS[distribution(generator)];
-	}
+		random_string = "p_";
+		for (int i = 0; i < PLAYER_ID_LENGTH - 2; ++i) {
+			random_string += CHARACTERS[distribution(generator)];
+		}
+	} while (m_player_ids.find(random_string) == m_player_ids.end());
+	//Above means while random_string not in m_player_ids
+	//Perhaps make common::setContains function (and mapContainsKey, etc.)
 
 	return random_string;
 }
