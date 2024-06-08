@@ -2,14 +2,18 @@ Shengji-Backend
 
 
 TODO:
-- Implement Game object functions
+[] Implement S2CMessages functions
 
-- Standardize messaging vocabulary
+[] Implement Game object functions
 
-- Make general message handler that redirects to the correct specific handler (eg. chat, game, etc)
+[] Standardize messaging vocabulary
+
+[] Make general message handler that redirects to the correct specific handler (eg. chat, game, etc)
 -- Make specific message handlers
 
 
-COMPLETED:
-- Created message catalog
-- Created Game object header
+Completed:
+[X] Created message catalog
+[X] Created Game object header
+[X] Created S2CMessages Namespace
+[X] Created S2CMessages Header
