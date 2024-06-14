@@ -74,9 +74,25 @@ void S2CMessages::sendBroadcastHostPlayer(std::list<Player*> players, std::strin
 }
 
 void S2CMessages::sendBroadcastTeamUpdate(std::list<Player*> players, std::unordered_map<std::string, std::string> teams) {
-    // TODO
-    //
-    //
+    double time = common::getTime();
+
+    std::list<Player*>::iterator itr;
+
+    for (itr = players.begin(); itr != players.end(); itr++) {
+        Player* curr_player = *itr;
+        JSON s2c_message = {
+            {"stage", "lobby" },
+            { "task", "broadcast_team_update" },
+            { "time", time},
+            {"sid", curr_player->getSID()}
+        };
+
+        for (auto const& x : teams) {
+            s2c_message["teams"][x.first] = x.second;
+        }
+
+        common::sendThroughSocketSID(s2c_message);
+    }
 }
 
 void S2CMessages::sendLobbyNotReady(std::string sid, std::string message) {
@@ -311,7 +327,31 @@ void S2CMessages::sendBroadcastTrickEnd(std::list<Player*> players) {
 }
 
 void S2CMessages::sendBroadcastUpdateScore(std::list<Player*> players, std::list<Card*> scored_cards, int points_scored) {
-    //TODO
+
+    JSON s2c_message = {
+            {"stage", "game" },
+            { "task", "broadcast_update_score" },
+            { "points_scored", points_scored },
+    };
+
+    s2c_message["scored_cards"] = {};
+
+    for (auto const& card : scored_cards) {
+        s2c_message["scored_cards"].push_back(
+            {
+                {"suit", card->getSuit()},
+                {"value", card->getValue()},
+                {"id", card->getValue()},
+            });
+    }
+
+    std::list<Player*>::iterator itr;
+
+    for (itr = players.begin(); itr != players.end(); itr++) {
+        Player* curr_player = *itr;
+        s2c_message["sid"] = curr_player->getSID();
+        common::sendThroughSocketSID(s2c_message);
+    }
 }
 
 void S2CMessages::sendFinishGame(std::list<Player*> players) {

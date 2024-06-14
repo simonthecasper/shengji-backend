@@ -66,3 +66,15 @@ void common::print(std::string s) {
 void common::setSocketIOServerFD(int fd) {
 	m_socketio_server = fd;
 }
+
+void common::setStartTime() {
+	m_start_time = time(0);
+}
+
+double common::getTime() {
+	m_time_mutex.lock();
+	double diff = difftime(time(0), m_start_time);
+	m_time_mutex.unlock();
+
+	return diff;
+}

@@ -2,8 +2,6 @@ Shengji-Backend
 
 
 TODO:
-[] Implement S2CMessages functions
-
 [] Implement Game object functions
 
 [] Standardize messaging vocabulary
@@ -17,3 +15,4 @@ Completed:
 [X] Created Game object header
 [X] Created S2CMessages Namespace
 [X] Created S2CMessages Header
+[X] Implement S2CMessages functions

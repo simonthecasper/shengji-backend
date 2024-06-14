@@ -7,7 +7,7 @@
 SocketServer::SocketServer() {
 	std::cout << "Constructing SocketServer..." << std::endl;
 	initServer();
-	// printIP();
+	common::setStartTime();
 
 	m_session_manager = new SessionManager();
 	std::fill_n(m_fd_message_size, FD_ARRAY_SIZE, HEADER_SIZE); //initialize all sockets to expect headers

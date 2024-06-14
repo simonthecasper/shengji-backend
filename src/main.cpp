@@ -34,7 +34,7 @@ void deckTesting() {
 	//Card* card = deck.drawCard();
 	//std::cout << deck.printRankOrder() << std::endl;
 
-	set<Card> cardset;
+	std::set<Card> cardset;
 
 	int draw_deck_size = deck.getDrawDeckSize();
 	for (int i = 0; i < draw_deck_size; i++) {
