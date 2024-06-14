@@ -1,17 +1,14 @@
 #pragma once
 
-
 #include "Deck.h"
 #include "Player.h"
 
-enum GameStage { draw, game };
-
 class Game {
 private:
-    enum GameStage m_game_stage;
 
-    std::list<Player*>  m_player_order;
-    Deck                m_deck;
+    std::unordered_set<std::string>	m_player_sids;
+    std::list<Player*>          m_player_order;
+    Deck                        m_deck;
 
     std::string         m_strong_suit;
     std::string         m_strong_value;
@@ -19,7 +16,7 @@ private:
     Player* m_lord_player;
     Player* m_trick_starter;
     Player* m_expected_player;
-    list<Player*>::iterator m_expected_player_itr;
+    std::list<Player*>::iterator m_expected_player_itr;
 
     Player* m_winning_player;
     Play                m_winning_play;
@@ -35,7 +32,6 @@ public:
     // General message handler that routes to the correct handler
     // for the task 
     void handleMessage(JSON message);
-
 
 private:
     // Receives a play from the expected player and updates the game state accordingly

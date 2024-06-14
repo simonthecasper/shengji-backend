@@ -15,21 +15,22 @@ private:
 	Chat* m_chatlog;
 	int				m_player_count;
 
-	Player			m_host;
+	Player* m_host;
 	Game			m_current_game;
 
-	set<Player*>						m_player_list;
-	unordered_set<std::string>			m_player_ids;
-	unordered_set<std::string>			m_player_sids;
+	std::list<Player*>						m_player_list;
+	std::unordered_set<std::string>			m_player_ids;
+	std::unordered_set<std::string>			m_player_sids;
 
-	unordered_map<std::string, Player*> 		m_id_to_player;
-	unordered_map<std::string, std::string>		m_sid_to_id;
-	unordered_map<std::string, std::string>		m_id_to_sid;
+	std::unordered_map<std::string, Player*> 		m_id_to_player;
+	std::unordered_map<std::string, std::string>		m_sid_to_id;
+	std::unordered_map<std::string, std::string>		m_id_to_sid;
 
-	unordered_map<std::string, std::list<Player*>>
-		m_team_assignments;
+	std::unordered_map<std::string, std::string>		m_player_teams; // <player_id, team>
 
 public:
+	Session();
+
 	//Creates a session with the provided ID
 	Session(std::string id);
 

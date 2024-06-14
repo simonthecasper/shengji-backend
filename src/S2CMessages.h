@@ -2,58 +2,67 @@
 
 #include "common.h"
 #include "Play.h"
+#include "Player.h"
+
+
 
 namespace S2CMessages {
 
-    void sendChatMessage(std::string sid, std::string player_id, std::string message);
+    //Sends a chat message to the user with the provided sid
+
+    void sendBroadcastChat(std::list<Player*> players, std::string player_id, std::string message);
 
     /*-------------------------------------------*/
-    /*                Lobby Phase                */
+    /*                Lobby Stage                */
     /*-------------------------------------------*/
-    void sendSessionJoined(std::string sid, std::string room_id, std::string player_id);
+    void sendJoinSessionNotFound(std::string sid);
 
-    void sendSetHost(std::string sid, std::string player_id);
+    void sendJoinSessionAck(std::string sid, std::string room_id, std::string player_id);
 
-    void sendSetTeam(std::string sid, JSON teams);
+    void sendBroadcastNewPlayer(std::list<Player*> players, std::string player_id, std::string username);
 
-    void sendLobbyNotReady(std::string sid);
+    void sendBroadcastHostPlayer(std::list<Player*> players, std::string player_id);
 
-    void sendStartDraw(std::string sid);
+    void sendBroadcastTeamUpdate(std::list<Player*> players, std::unordered_map<std::string, std::string> teams);
 
+    void sendLobbyNotReady(std::string sid, std::string message);
 
-    /*-------------------------------------------*/
-    /*                Draw Phase                 */
-    /*-------------------------------------------*/
-    void sendDrawCard(std::string sid, JSON card);
-
-    void sendOtherPlayerDrawCard(std::string sid, std::string drawing_player_id);
-
-    void sendSetStrongSuit(std::string sid, JSON card, std::string setting_player_id);
-
-    void setLordPlayer(std::string sid, std::string player_id);
-
-    void endMainDraw(std::string sid);
-
-    void sendStartGame(std::string sid);
+    void sendBeginDrawStage(std::list<Player*> players);
 
 
     /*-------------------------------------------*/
-    /*                Game Phase                 */
+    /*                Draw Stage                 */
     /*-------------------------------------------*/
-    void sendSignalTrickStarter(std::string sid, std::string player_id);
+    void sendDealCardTargetPlayer(std::string sid, Card* card);
 
-    void sendSignalExpectedPlayer(std::string sid, std::string player_id);
+    void sendDealCardOtherPlayer(std::list<Player*> players, std::string drawing_player_id);
 
-    void sendBroadcastPlay(std::string sid, std::string player_id, JSON structure, Play source_play);
+    void sendBroadcastMatchCard(std::list<Player*> players, Card* card, std::string setting_player_id);
+
+    void setBroadcastLordPlayer(std::list<Player*> players, std::string player_id);
+
+    void endMainDraw(std::list<Player*> players);
+
+    void sendStartGame(std::list<Player*> players);
+
+
+    /*-------------------------------------------*/
+    /*                Game Stage                 */
+    /*-------------------------------------------*/
+    void sendBroadcastTrickStarter(std::list<Player*> players, std::string player_id, int trick_number);
+
+    void sendBroadcastExpecedPlayer(std::list<Player*> players, std::string player_id);
+
+    void sendBroadcastPlay(std::list<Player*> players, std::string player_id, Play* source_play);
 
     void sendPlayError(std::string sid, std::string message);
 
-    void sendSetWinningPlayer(std::string sid, std::string player_id);
+    void sendBroadcastWinningPlayer(std::list<Player*> players, std::string player_id);
 
-    void sendSignalTrickEnd(std::string sid);
+    void sendBroadcastTrickEnd(std::list<Player*> players);
 
-    void sendUpdateScore(std::string sid, std::list<Card*> scored_cards, int points_scored);
+    void sendBroadcastUpdateScore(std::list<Player*> players, std::list<Card*> scored_cards, int points_scored);
 
-    void sendFinishGame(std::string sid);
+    void sendFinishGame(std::list<Player*> players);
 
 }

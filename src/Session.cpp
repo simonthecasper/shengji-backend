@@ -1,5 +1,8 @@
 #include "Session.h"
 
+Session::Session() {
+
+}
 
 Session::Session(std::string id) {
 	m_id = id;
@@ -21,7 +24,7 @@ void Session::addToChat(JSON message_json) {
 }
 
 void Session::sendToOtherPlayersSID(std::string source_sid, JSON message) {
-	unordered_set<std::string>::iterator itr;
+	std::unordered_set<std::string>::iterator itr;
 	// Displaying set elements
 	for (itr = m_player_sids.begin(); itr != m_player_sids.end(); itr++) {
 		if (*itr != source_sid) {
@@ -33,15 +36,18 @@ void Session::sendToOtherPlayersSID(std::string source_sid, JSON message) {
 std::string Session::addPlayerSID(std::string sid) {
 	std::string player_id = generatePlayerID();
 	Player* p = new Player(player_id);
+	p->setSID(sid);
 
 	m_player_ids.insert(player_id);
-	m_player_list.insert(p);
+	m_player_list.push_back(p);
 	m_player_sids.insert(sid);
 
 	m_player_count = (int)m_player_list.size();
 	m_id_to_sid[player_id] = sid;
 	m_sid_to_id[sid] = player_id;
 	m_id_to_player[player_id] = p;
+
+	m_player_teams[player_id] = "Unset";
 
 	return player_id;
 }
@@ -50,7 +56,8 @@ void Session::removePlayerSID(std::string sid) {
 	std::string player_id = m_sid_to_id.at(sid);
 	Player* target = m_id_to_player.at(player_id);
 
-	m_player_list.erase(target);
+	m_player_list.remove(target);
+
 	m_player_ids.erase(player_id);
 	m_player_sids.erase(sid);
 	m_sid_to_id.erase(sid);
@@ -62,11 +69,11 @@ void Session::removePlayerSID(std::string sid) {
 std::string Session::generatePlayerID() {
 	std::string random_string = "";
 	do {
-		const string CHARACTERS = "abcdefghijklmnopqrstuv";
+		const std::string CHARACTERS = "abcdefghijklmnopqrstuv";
 
-		random_device rd;
-		mt19937 generator(rd());
-		uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
+		std::random_device rd;
+		std::mt19937 generator(rd());
+		std::uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
 
 		random_string = "p_";
 		for (int i = 0; i < PLAYER_ID_LENGTH - 2; ++i) {

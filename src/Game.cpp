@@ -10,8 +10,6 @@ bool Game::verifyIncomingMessageIsFromExpectedPlayer(JSON message) {
 }
 
 
-
-
 void Game::setLordPlayer(Player* lord_player) {
     m_lord_player = lord_player;
 }

@@ -5,7 +5,7 @@ Card::Card() {
     m_suit = "Unset";
     m_value = "Unset";
     m_rank = -1;
-    
+
     m_strong = false;
     m_points = -1;
 
@@ -13,7 +13,7 @@ Card::Card() {
 }
 
 
-Card::Card(string suit_con, int rank_con, int id) {
+Card::Card(std::string suit_con, int rank_con, int id) {
     m_suit = suit_con;
     m_rank = rank_con;
     m_id = id;
@@ -23,7 +23,7 @@ Card::Card(string suit_con, int rank_con, int id) {
 
     //Set name
     if (m_rank < 11)
-        m_value = to_string(m_rank);
+        m_value = std::to_string(m_rank);
     else if (m_rank == 11)
         m_value = "Jack";
     else if (m_rank == 12)
@@ -49,14 +49,14 @@ Card::Card(string suit_con, int rank_con, int id) {
     else {
         m_points = 0;
     }
-    
+
 }
 
-string Card::getSuit() const{
+std::string Card::getSuit() const {
     return m_suit;
 }
 
-string Card::getValue() const{
+std::string Card::getValue() const {
     return m_value;
 }
 
@@ -64,7 +64,7 @@ int Card::getRank() const {
     return m_rank;
 }
 
-bool Card::isStrong() const{
+bool Card::isStrong() const {
     return m_strong;
 }
 
@@ -76,7 +76,7 @@ int Card::getID() const {
     return m_id;
 }
 
-void Card::setStrongSuitAndRank(string strong_suit, int strong_rank) {
+void Card::setStrongSuitAndRank(std::string strong_suit, int strong_rank) {
     m_strong = (m_suit == strong_suit) || (m_rank == strong_rank);
     //m_strong_suit = strong_suit;
     //m_strong_rank = strong_rank;
@@ -91,7 +91,7 @@ void Card::setStrongSuitAndRank(string strong_suit, int strong_rank) {
         m_rank--;
     else if (m_rank >= 16) //is joker
         m_strong = true;
-    
+
     //m_suit_rank["Joker"] = 4;
     if (strong_suit == "Spades") {
         m_suit_rank["Hearts"] = 3;
@@ -116,12 +116,12 @@ void Card::setStrongSuitAndRank(string strong_suit, int strong_rank) {
 }
 
 
-bool Card::isIdentical(Card other) const{
+bool Card::isIdentical(Card other) const {
     return m_id == other.getID();
 }
 
 
-bool Card::isSameRank(Card other) const{
+bool Card::isSameRank(Card other) const {
     if (m_strong && (m_strong == other.isStrong()))
         return m_rank == other.getRank();
     else
@@ -132,7 +132,7 @@ bool Card::isSameRank(Card other) const{
 //Returns positive if this Card is less than the other card
 //Returns 0 if these cards are equivalent or if the comparison is void
 //Returns negative if this Card is greater than the other card
-int Card::isLessThan(const Card& other) const{
+int Card::isLessThan(const Card& other) const {
     if (m_value == "Unset")  //unset should always be less than other card, even another unset
         return 1;
     else if (other.getValue() == "Unset")
@@ -170,7 +170,7 @@ int Card::isGreaterThan(const Card& other) const {
 }
 
 
-int Card::triStateBool(int a, int b) const{
+int Card::triStateBool(int a, int b) const {
     return b - a;
 }
 
@@ -187,7 +187,7 @@ bool Card::operator<(const Card& other) const {
 }
 
 
-bool Card::operator>(Card other) const{
+bool Card::operator>(Card other) const {
     if (m_value == "Unset")
         return false;
     else if (other.getValue() == "Unset")
@@ -219,9 +219,9 @@ bool Card::operator>(Card other) const{
 //}
 
 
-string Card::toString() const {
-    string ret = "";
-    
+std::string Card::toString() const {
+    std::string ret = "";
+
     if (m_rank >= 16)
         ret += m_value;
     else
@@ -231,4 +231,8 @@ string Card::toString() const {
         ret += " (strong)";
 
     return ret;
+}
+
+std::string Card::toJSONString() const {
+
 }
