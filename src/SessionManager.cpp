@@ -87,13 +87,13 @@ bool SessionManager::ifSessionIDExists(std::string id) {
 }
 
 std::string SessionManager::generateSessionID() {
-    const string CHARACTERS = "abcdefghijklmnopqrstuv";
+    const std::string CHARACTERS = "abcdefghijklmnopqrstuv";
 
-    random_device rd;
-    mt19937 generator(rd());
-    uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
 
-    string random_string = "s";
+    std::string random_string = "s";
     for (int i = 0; i < ID_LENGTH - 1; ++i) {
         random_string
             += CHARACTERS[distribution(generator)];

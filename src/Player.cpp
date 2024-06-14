@@ -11,7 +11,7 @@ Player::Player(std::string id) {
 }
 
 
-Player::Player(std::string id, string name) {
+Player::Player(std::string id, std::string name) {
 	m_id = id;
 	m_name = name;
 	//m_scoring = scoring;
@@ -21,7 +21,18 @@ void Player::toggleScoring() {
 	m_scoring = !m_scoring;
 }
 
-string Player::getName() const {
+
+void Player::setSID(std::string sid) {
+	m_sid = sid;
+}
+
+
+std::string Player::getSID() {
+	return m_sid;
+}
+
+
+std::string Player::getName() const {
 	return m_name;
 }
 
@@ -46,8 +57,8 @@ void Player::addCardToHand(Card* card) {
 }
 
 
-bool Player::ifHasCard(string suit, int rank, int id) {
-	set<Card*>::iterator itr;
+bool Player::ifHasCard(std::string suit, int rank, int id) {
+	std::set<Card*>::iterator itr;
 	itr = m_hand.begin();
 
 	while (itr != m_hand.end()) {
@@ -73,7 +84,7 @@ bool Player::ifHasCard(Card* card) {
 
 
 
-set<Card*> Player::getHand() const {
+std::set<Card*> Player::getHand() const {
 	return m_hand;
 }
 

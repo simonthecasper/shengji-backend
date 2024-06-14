@@ -9,27 +9,17 @@ Play::Play(Player* source) {
 	m_source = source;
 }
 
-void Play::makeStartPlay(unordered_map<string, int> structure, set<Card*> cards) {
-	m_structure = structure;
-	m_cards = cards;
-	m_valid = true;
+// void Play::makeStartPlay() {
+// 	//TODO	
+// }
 
-	setHighCard();
-}
-
-void Play::makeFollowPlay(Play* starter, set<Card*> cards, bool valid) {
-	m_structure = starter->getStructure();
-	m_cards = cards;
-	m_valid = valid;//may delete later
-	//TODO: check if play is valid. May not need if it gets checked at the front
+// void Play::makeFollowPlay() {
+// 	//TODO
+// }
 
 
-	setHighCard();
-}
-
-
-unordered_map<string, int> Play::getStructure() const {
-	return m_structure;
+std::pair<int, int> Play::getStructure() const {
+	return std::make_pair(m_component_count, m_component_length);
 }
 
 
@@ -53,7 +43,7 @@ void Play::setHighCard() {
 	}
 }
 
-string Play::toString() const {
+std::string Play::toString() const {
 	return "asdf";
 }
 

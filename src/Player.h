@@ -7,25 +7,32 @@ class Player
 private:
 	std::string 	m_id;
 	std::string 	m_name;
+	std::string		m_sid;
 
 	bool 			m_scoring;
 	std::string 	m_team;
 
-	set<Card*> 		m_hand;
+	std::set<Card*> 		m_hand;
 
 public:
 	Player();
 
 	Player(std::string id);
 
-	Player(std::string id, string name);
+	Player(std::string id, std::string name);
 
 
 	// Changes scoring status of player
 	void toggleScoring();
 
+	// Sets the players SID to the provided value
+	void setSID(std::string sid);
+
+	// Returns the players SID
+	std::string getSID();
+
 	// Returns the name of the player
-	string getName() const;
+	std::string getName() const;
 
 	// Returns the assigned ID of the player
 	std::string getID() const;
@@ -41,7 +48,7 @@ public:
 
 	// Given a suit, rank, and id, returns whether this player has this card in
 	//	their hand
-	bool ifHasCard(string suit, int rank, int id);
+	bool ifHasCard(std::string suit, int rank, int id);
 
 	// Returns true if the requested Card* is in the players hand
 	bool ifHasCard(Card* card);
@@ -54,7 +61,7 @@ public:
 	void addCardToHand(Card* card);
 
 	//Returns the hand of cards this player has
-	set<Card*> getHand() const;
+	std::set<Card*> getHand() const;
 
 	//Returns the size of the players hand
 	int getHandSize() const;
