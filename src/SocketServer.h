@@ -15,7 +15,7 @@
 #include <openssl/sha.h>
 
 #define THREAD_START			0  // set to 1 to skip network listen thread
-#define MAX_THREADS				2
+#define MAX_THREADS				5
 
 
 // #define HEADER_SIZE         	64

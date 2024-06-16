@@ -39,7 +39,7 @@ void deckTesting() {
 	int draw_deck_size = deck.getDrawDeckSize();
 	for (int i = 0; i < draw_deck_size; i++) {
 		Card* drawnCard = deck.drawCard();
-		std::cout << to_string(i) << ": " << (*drawnCard).toString() << "\n";
+		std::cout << std::to_string(i) << ": " << (*drawnCard).toString() << "\n";
 		cardset.insert(*drawnCard);
 	}
 	std::cout << "\n" << std::endl;

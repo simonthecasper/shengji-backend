@@ -17,9 +17,11 @@ namespace S2CMessages {
     /*-------------------------------------------*/
     void sendJoinSessionNotFound(std::string sid);
 
-    void sendJoinSessionAck(std::string sid, std::string room_id, std::string player_id);
+    void sendJoinSessionAck(std::string sid, std::string session_id, std::string player_id);
 
     void sendBroadcastNewPlayer(std::list<Player*> players, std::string player_id, std::string username);
+
+    void sendShareLobbyInfo(std::list<Player*> players, std::string host_player_id, std::string target_player_id);
 
     void sendBroadcastHostPlayer(std::list<Player*> players, std::string player_id);
 

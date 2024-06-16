@@ -2,12 +2,11 @@ Shengji-Backend
 
 
 TODO:
-[] Implement Game object functions
+[] Create Game object draw phase functions
 
 [] Standardize messaging vocabulary
 
-[] Make general message handler that redirects to the correct specific handler (eg. chat, game, etc)
--- Make specific message handlers
+[Simon] Make general message handler that redirects to the correct specific handler (eg. chat, game, etc)
 
 
 Completed:

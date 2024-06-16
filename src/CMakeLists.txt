@@ -9,9 +9,11 @@ set(SOURCE_FILES
     AcceptedSocket.cpp
     SessionManager.cpp
     Session.cpp
+    Player.cpp
+    Play.cpp
+    Card.cpp
     Chat.cpp
-    common.cpp
-    Player.cpp)
+    common.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 

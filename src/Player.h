@@ -6,7 +6,7 @@ class Player
 {
 private:
 	std::string 	m_id;
-	std::string 	m_name;
+	std::string 	m_username;
 	std::string		m_sid;
 
 	bool 			m_scoring;
@@ -19,7 +19,9 @@ public:
 
 	Player(std::string id);
 
-	Player(std::string id, std::string name);
+	Player(std::string id, std::string username);
+
+	Player(std::string id, std::string username, std::string sid);
 
 
 	// Changes scoring status of player
@@ -32,7 +34,7 @@ public:
 	std::string getSID();
 
 	// Returns the name of the player
-	std::string getName() const;
+	std::string getUsername() const;
 
 	// Returns the assigned ID of the player
 	std::string getID() const;

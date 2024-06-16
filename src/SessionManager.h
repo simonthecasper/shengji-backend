@@ -18,18 +18,20 @@ private:
 		m_sid_to_sessionid;
 
 public:
+	SessionManager();
+
 	void handleMessage(JSON message);
 
+private:
 	void removeSID(std::string sid);
 
-private:
 	Session* createNewSession();
 
 	std::string addPlayerToSessionSID(std::string session_id, std::string sid);
 
 	void linkSIDToSessionID(std::string sid, std::string id);
 
-	bool ifSessionIDExists(std::string id);
+	bool doesSessionIDExist(std::string id);
 
 	std::string generateSessionID();
 };

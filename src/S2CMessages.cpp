@@ -30,12 +30,12 @@ void S2CMessages::sendJoinSessionNotFound(std::string sid) {
 /*-------------------------------------------*/
 /*                Lobby Stage                */
 /*-------------------------------------------*/
-void S2CMessages::sendJoinSessionAck(std::string sid, std::string room_id, std::string player_id) {
+void S2CMessages::sendJoinSessionAck(std::string sid, std::string session_id, std::string player_id) {
     JSON s2c_message = {
         {"stage", "lobby"},
         {"task", "join_session_ack"},
         {"player_id", player_id},
-        {"room_id", room_id},
+        {"session_id", session_id},
         {"sid", sid}
     };
     common::sendThroughSocketSID(s2c_message);
@@ -57,6 +57,31 @@ void S2CMessages::sendBroadcastNewPlayer(std::list<Player*> players, std::string
         common::sendThroughSocketSID(s2c_message);
     }
 }
+
+void S2CMessages::sendShareLobbyInfo(std::list<Player*> players, std::string host_player_id, std::string target_player_id) {
+    JSON s2c_message = {
+            { "stage", "lobby" },
+            { "task", "share_lobby_info" },
+            { "host_player_id", host_player_id }
+    };
+
+    s2c_message["other_players"] = {};
+
+    for (auto const& player : players) {
+        if (common::stringCompare(player->getID(), target_player_id)) {
+            s2c_message["other_players"].push_back(
+                {
+                    {"player_id", player->getID()},
+                    {"username", player->getUsername()},
+                    {"team", player->getTeam()},
+                });
+
+            s2c_message["sid"] = player->getSID();
+            common::sendThroughSocketSID(s2c_message);
+        }
+    }
+}
+
 
 void S2CMessages::sendBroadcastHostPlayer(std::list<Player*> players, std::string player_id) {
     std::list<Player*>::iterator itr;

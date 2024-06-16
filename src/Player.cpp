@@ -11,11 +11,18 @@ Player::Player(std::string id) {
 }
 
 
-Player::Player(std::string id, std::string name) {
+Player::Player(std::string id, std::string username) {
 	m_id = id;
-	m_name = name;
-	//m_scoring = scoring;
+	m_username = username;
 }
+
+
+Player::Player(std::string id, std::string username, std::string sid) {
+	m_id = id;
+	m_username = username;
+	m_sid = sid;
+}
+
 
 void Player::toggleScoring() {
 	m_scoring = !m_scoring;
@@ -32,8 +39,8 @@ std::string Player::getSID() {
 }
 
 
-std::string Player::getName() const {
-	return m_name;
+std::string Player::getUsername() const {
+	return m_username;
 }
 
 std::string Player::getID() const {

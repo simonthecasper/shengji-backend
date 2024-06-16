@@ -5,6 +5,7 @@
 #include "Player.h"
 #include "Chat.h"
 #include "Game.h"
+#include "S2CMessages.h"
 
 #define PLAYER_ID_LENGTH	10
 
@@ -15,7 +16,7 @@ private:
 	Chat* m_chatlog;
 	int				m_player_count;
 
-	Player* m_host;
+	Player* m_host_player;
 	Game			m_current_game;
 
 	std::list<Player*>						m_player_list;
@@ -27,6 +28,7 @@ private:
 	std::unordered_map<std::string, std::string>		m_id_to_sid;
 
 	std::unordered_map<std::string, std::string>		m_player_teams; // <player_id, team>
+	std::mutex											m_set_team_mutex;
 
 public:
 	Session();
@@ -38,15 +40,15 @@ public:
 	void handleMessage(JSON message_json);
 
 	//Receives a chat message and adds it to the session chat
-	void addToChat(JSON message_json);
+	void addToChat(JSON message);
 
 	//Accepts a JSON message and sends it to every user in this session EXCEPT for
 	// 	the user with the provided SID
 	void sendToOtherPlayersSID(std::string source_sid, JSON message);
 
 	//Adds a new player into this session with the provided SID.
-	//	Returns the player_id of this newly added player
-	std::string addPlayerSID(std::string sid);
+	//  Send a confirmation message to the SID if successful
+	void addPlayer(std::string sid, std::string username);
 
 	//Removes the player with the provided SID from the session
 	void removePlayerSID(std::string sid);
@@ -57,11 +59,19 @@ public:
 	//Returns the session ID of this session
 	std::string getID();
 
-	//TODO: Adds the sender of the given message to the team they specify
-	//	Updates m_team_assignments accordingly and sets the team field in the player object
-	void addPlayerToTeam(JSON message);
+	//Adds the player with the provided player_id to the given team
+	void addPlayerToTeam(std::string player_id, std::string team);
 
-	//TODO: Creates a Game object for when the game starts
-	void createGame();
+	//Returns if a user with the given SID is already in this session
+	bool sidInSession(std::string sid);
+
+	//Sets the host player to the player with the provided player_id
+	void setHostPlayer(std::string player_id);
+
+	//TODO: Checks if game can be started and creates a Game object if valid
+	void checkAndCreateGame();
+
+	//Returns if the lobby is ready to start a game
+	bool checkIfLobbyReady();
 
 };
