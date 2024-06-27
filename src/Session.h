@@ -17,7 +17,7 @@ private:
 	int				m_player_count;
 
 	Player* m_host_player;
-	Game			m_current_game;
+	Game* m_current_game;
 
 	std::list<Player*>						m_player_list;
 	std::unordered_set<std::string>			m_player_ids;

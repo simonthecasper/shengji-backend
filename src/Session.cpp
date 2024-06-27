@@ -11,6 +11,7 @@ Session::Session(std::string id) {
 }
 
 void Session::handleMessage(JSON message) {
+	common::print("In Session handler...");
 	std::string stage = message.at("stage");
 	std::string task = message.at("task");
 
@@ -18,8 +19,9 @@ void Session::handleMessage(JSON message) {
 		addToChat(message);
 	}
 
-	else if (common::stringCompare(task, "lobby")) {
+	else if (common::stringCompare(stage, "prelobby")) {
 		if (common::stringCompare(task, "new_session")) {
+			common::print("Adding player to new session...");
 			std::string sid = message.at("sid");
 			std::string username = message.at("username");
 			addPlayer(sid, username);
@@ -30,8 +32,10 @@ void Session::handleMessage(JSON message) {
 			std::string username = message.at("username");
 			addPlayer(sid, username);
 		}
+	}
 
-		else if (common::stringCompare(task, "player_set_team")) {
+	else if (common::stringCompare(stage, "lobby")) {
+		if (common::stringCompare(task, "player_set_team")) {
 			std::string player_id = message.at("player_id");
 			std::string team = message.at("team");
 			addPlayerToTeam(player_id, team);
@@ -42,8 +46,8 @@ void Session::handleMessage(JSON message) {
 		}
 	}
 
-	else if (common::stringCompare(task, "draw") || common::stringCompare(task, "game")) {
-		m_current_game.handleMessage(message);
+	else if (common::stringCompare(stage, "draw") || common::stringCompare(stage, "game")) {
+		m_current_game->handleMessage(message);
 	}
 
 }
@@ -68,12 +72,15 @@ void Session::sendToOtherPlayersSID(std::string source_sid, JSON message) {
 
 void Session::addPlayer(std::string sid, std::string username) {
 	// Players SID already exists in this session
-	if (sidInSession(sid))
+	common::print("--Entered addPlayer");
+	if (sidInSession(sid)) {
+		common::print("Player is already in session");
 		return;
+	}
+	common::print("--Past return early");
 
 	std::string player_id = generatePlayerID();
 	Player* p = new Player(player_id, username, sid);
-
 
 	m_player_ids.insert(player_id);
 	m_player_list.push_back(p);
@@ -86,8 +93,14 @@ void Session::addPlayer(std::string sid, std::string username) {
 
 	m_player_teams[player_id] = "Unset";
 
+	if (m_player_count == 1) { setHostPlayer(player_id); }
+
+	common::print("Player created... Sending outwards");
+
+	std::string host_id = m_host_player->getID();
+
 	S2CMessages::sendJoinSessionAck(sid, m_id, player_id);
-	S2CMessages::sendShareLobbyInfo(m_player_list, m_host_player->getID(), player_id);
+	S2CMessages::sendShareLobbyInfo(m_player_list, host_id, player_id);
 	S2CMessages::sendBroadcastNewPlayer(m_player_list, player_id, username);
 }
 
@@ -106,8 +119,10 @@ void Session::removePlayerSID(std::string sid) {
 }
 
 std::string Session::generatePlayerID() {
+	common::print("---Creating playerID");
 	std::string random_string = "";
 	do {
+		common::print("----in loop");
 		const std::string CHARACTERS = "abcdefghijklmnopqrstuv";
 
 		std::random_device rd;
@@ -118,10 +133,10 @@ std::string Session::generatePlayerID() {
 		for (int i = 0; i < PLAYER_ID_LENGTH - 2; ++i) {
 			random_string += CHARACTERS[distribution(generator)];
 		}
-	} while (m_player_ids.find(random_string) == m_player_ids.end());
+	} while (m_player_ids.find(random_string) != m_player_ids.end());
 	//Above means while random_string not in m_player_ids
 	//Perhaps make common::setContains function (and mapContainsKey, etc.)
-
+	common::print("---PlayerID created");
 	return random_string;
 }
 

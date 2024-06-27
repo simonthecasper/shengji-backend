@@ -11,6 +11,7 @@ private:
 
 	bool 			m_scoring;
 	std::string 	m_team;
+	std::string		m_game_value;
 
 	std::set<Card*> 		m_hand;
 
@@ -68,7 +69,9 @@ public:
 	//Returns the size of the players hand
 	int getHandSize() const;
 
-	//WIP: creates a play based on the received input from the client
-	//Play makePlay();
+	//Sets the players personal game value (card their "team" is on in the macro scoring of the game)
+	void setPlayerGameValue(std::string game_value);
 
+	//Returns the players personal game value
+	std::string getPlayerGameValue();
 };

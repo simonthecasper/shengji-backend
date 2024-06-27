@@ -5,6 +5,10 @@ Game::Game() {
 }
 
 
+void Game::handleMessage(JSON message) {
+
+}
+
 bool Game::verifyIncomingMessageIsFromExpectedPlayer(JSON message) {
     return common::stringCompare(m_expected_player->getID(), message.at("player_id"));
 }

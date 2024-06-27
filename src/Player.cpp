@@ -78,25 +78,22 @@ bool Player::ifHasCard(std::string suit, int rank, int id) {
 	return false;
 }
 
-
 bool Player::ifHasCard(Card* card) {
 	return m_hand.find(card) != m_hand.end();
 }
-
-
-//Card* Player::pickCard(Card* card) {
-//	
-//}
-
-
-
 
 std::set<Card*> Player::getHand() const {
 	return m_hand;
 }
 
-
 int Player::getHandSize() const {
 	return m_hand.size();
 }
 
+void Player::setPlayerGameValue(std::string game_value) {
+	m_game_value = game_value;
+}
+
+std::string Player::getPlayerGameValue() {
+	return m_game_value;
+}

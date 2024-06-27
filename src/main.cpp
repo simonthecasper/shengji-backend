@@ -4,7 +4,6 @@
 
 #include <iostream>
 #include <set>
-#include <openssl/sha.h>
 
 void deckTesting();
 int serverTesting();

@@ -7,6 +7,7 @@ SessionManager::SessionManager() {
 
 
 void SessionManager::handleMessage(JSON message) {
+    common::print("In SessionManager handler...");
     std::string message_as_string = message.dump();
     common::print("Received from socketio server:" + message_as_string);
 
@@ -16,6 +17,7 @@ void SessionManager::handleMessage(JSON message) {
 
 
     if (common::stringCompare(task, "new_session")) {
+        common::print("Creating new session...");
         Session* new_session = createNewSession();
         std::string session_id = new_session->getID();
 
@@ -43,7 +45,7 @@ void SessionManager::handleMessage(JSON message) {
 }
 
 void SessionManager::removeSID(std::string sid) {
-    // If socket exists in the sessionmanager
+    // If SID exists in the sessionmanager
     if (m_sid_to_sessionid.count(sid)) {
         std::string session_id = m_sid_to_sessionid.at(sid);
 
@@ -58,20 +60,12 @@ Session* SessionManager::createNewSession() {
     return m_id_to_session[new_id];
 }
 
-std::string SessionManager::addPlayerToSessionSID(std::string session_id, std::string sid) {
-    Session* target_session = m_id_to_session[session_id];
-    // std::string player_id = target_session->addPlayerSID(sid);
-    // return player_id;
-}
-
 void SessionManager::linkSIDToSessionID(std::string sid, std::string id) {
     m_sid_to_sessionid[sid] = id;
 }
 
 bool SessionManager::doesSessionIDExist(std::string id) {
-    if (m_id_to_session.find(id) == m_id_to_session.end())
-        return false;
-    return true;
+    return (m_id_to_session.find(id) != m_id_to_session.end());
 }
 
 std::string SessionManager::generateSessionID() {

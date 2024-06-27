@@ -234,5 +234,5 @@ std::string Card::toString() const {
 }
 
 std::string Card::toJSONString() const {
-
+    return "asdf";
 }

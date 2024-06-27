@@ -1,0 +1,25 @@
+---
+services:
+  sj-backend_app-server_c:
+    image: simonthecasper/sj-backend_app-server
+    networks:
+      sj-backend_bridge:
+        ipv4_address: 10.0.0.2
+
+  sj-backend_middleman_c:
+    image: simonthecasper/sj-backend_middleman
+    ports:
+      - 2500:2500
+    networks:
+      sj-backend_bridge:
+        ipv4_address: 10.0.0.3
+
+networks:
+  sj-backend_bridge:
+    driver: bridge
+
+    ipam:
+      config:
+        - subnet: "10.0.0.0/19"
+          gateway: "10.0.0.1"
+

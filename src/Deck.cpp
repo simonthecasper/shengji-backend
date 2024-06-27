@@ -20,7 +20,7 @@ Deck::Deck(int number_of_decks, int rank_omit_count) {
 void Deck::createDeck(int number_of_decks, int rank_omit_count) {
 	int id = 0;
 	for (int deck = 0; deck < number_of_decks; deck++) {
-		for (string suit : m_suits) {
+		for (std::string suit : m_suits) {
 			//Create 2-A of all suits
 			for (int rank = 2 + rank_omit_count; rank < 15; rank++) {
 				Card* newCard = new Card(suit, rank, id);
@@ -42,8 +42,8 @@ void Deck::createDeck(int number_of_decks, int rank_omit_count) {
 
 
 void Deck::shuffleDeck() {
-	list<Card*>::iterator m_new_deck_top = m_new_deck.begin();
-	list<Card*>::iterator m_new_deck_search = m_new_deck.begin();
+	std::list<Card*>::iterator m_new_deck_top = m_new_deck.begin();
+	std::list<Card*>::iterator m_new_deck_search = m_new_deck.begin();
 
 	srand(time(NULL));
 
@@ -70,8 +70,8 @@ Card* Deck::drawCard() {
 }
 
 
-Card* Deck::getCard(string suit, string value, int id) {
-	list<Card*>::iterator  itr = m_all_cards.begin();
+Card* Deck::getCard(std::string suit, std::string value, int id) {
+	std::list<Card*>::iterator  itr = m_all_cards.begin();
 	int i = 0;
 	while (i != id) {
 		itr++;
@@ -87,14 +87,14 @@ Card* Deck::getCard(string suit, string value, int id) {
 }
 
 
-string Deck::printRankOrder() {
-	list<Card*>::iterator draw_search = m_all_cards.begin();
+std::string Deck::printRankOrder() {
+	std::list<Card*>::iterator draw_search = m_all_cards.begin();
 	int pos = 0;
 
-	string ret = "";
+	std::string ret = "";
 
 	for (int i = 2; i < 18; i++) {
-		ret += to_string(i) + ": ";
+		ret += std::to_string(i) + ": ";
 		draw_search = m_all_cards.begin();
 		pos = 0;
 		while (pos < m_all_cards.size()) {
@@ -117,8 +117,8 @@ int Deck::getDrawDeckSize() const {
 }
 
 
-void Deck::setStrongSuitAndValue(string strong_suit, string value) {
-	unordered_map<string, int> value_to_rank;
+void Deck::setStrongSuitAndValue(std::string strong_suit, std::string value) {
+	std::unordered_map<std::string, int> value_to_rank;
 	value_to_rank["2"] = 2;
 	value_to_rank["3"] = 3;
 	value_to_rank["4"] = 4;
@@ -133,7 +133,7 @@ void Deck::setStrongSuitAndValue(string strong_suit, string value) {
 	value_to_rank["King"] = 13;
 	value_to_rank["Ace"] = 14;
 
-	list<Card*>::iterator all_card_iter = m_all_cards.begin();
+	std::list<Card*>::iterator all_card_iter = m_all_cards.begin();
 	int pos = 0;
 
 	while (pos < m_all_cards.size()) {

@@ -8,6 +8,8 @@ TODO:
 
 [Simon] Make general message handler that redirects to the correct specific handler (eg. chat, game, etc)
 
+[] Create JSON field name checker function and info file
+
 
 Completed:
 [X] Created message catalog

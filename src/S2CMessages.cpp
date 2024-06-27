@@ -31,6 +31,7 @@ void S2CMessages::sendJoinSessionNotFound(std::string sid) {
 /*                Lobby Stage                */
 /*-------------------------------------------*/
 void S2CMessages::sendJoinSessionAck(std::string sid, std::string session_id, std::string player_id) {
+    common::print("Sending join_session_ack...");
     JSON s2c_message = {
         {"stage", "lobby"},
         {"task", "join_session_ack"},
@@ -43,22 +44,27 @@ void S2CMessages::sendJoinSessionAck(std::string sid, std::string session_id, st
 
 
 void S2CMessages::sendBroadcastNewPlayer(std::list<Player*> players, std::string player_id, std::string username) {
+    common::print("Sending broadcast_new_player...\n");
     std::list<Player*>::iterator itr;
 
     for (itr = players.begin(); itr != players.end(); itr++) {
         Player* curr_player = *itr;
-        JSON s2c_message = {
+
+        if (!common::stringCompare(curr_player->getID(), player_id)) {
+            JSON s2c_message = {
             {"stage", "lobby" },
             { "task", "broadcast_new_player" },
             {"player_id", player_id},
             {"username", username},
             {"sid", curr_player->getSID()}
-        };
-        common::sendThroughSocketSID(s2c_message);
+            };
+            common::sendThroughSocketSID(s2c_message);
+        }
     }
 }
 
 void S2CMessages::sendShareLobbyInfo(std::list<Player*> players, std::string host_player_id, std::string target_player_id) {
+    common::print("Sending share_lobby_info...");
     JSON s2c_message = {
             { "stage", "lobby" },
             { "task", "share_lobby_info" },
@@ -68,7 +74,7 @@ void S2CMessages::sendShareLobbyInfo(std::list<Player*> players, std::string hos
     s2c_message["other_players"] = {};
 
     for (auto const& player : players) {
-        if (common::stringCompare(player->getID(), target_player_id)) {
+        if (!common::stringCompare(player->getID(), target_player_id)) {
             s2c_message["other_players"].push_back(
                 {
                     {"player_id", player->getID()},

@@ -137,6 +137,7 @@ void SocketServer::pollSocketArrayAppServer() {
 
 			// Not the listening socket, an existing connection is readable
 			else {
+				common::print("An existing connection is readable.");
 				pollReceiveAndProcessMessage(fd_index);
 			}
 		} // End of loop through pollable descriptors
@@ -347,6 +348,7 @@ void* SocketServer::threadFunctionAppServer(ThreadRoleEnum role) {
 	while (true) {
 		switch (role) {
 		case listen_incoming_data:
+			common::print("Listen thread is listening...");
 			pollSocketArrayAppServer();
 			break;
 
@@ -375,6 +377,7 @@ void* SocketServer::threadFunctionAppServer(ThreadRoleEnum role) {
 
 int SocketServer::addToQueue(JSON task) {
 	m_queue_control_mutex.lock();
+	common::print("Adding to work queue");
 	m_work_queue.push(task);
 	m_queue_control_mutex.unlock();
 	return 0;
