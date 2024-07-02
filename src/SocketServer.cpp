@@ -325,6 +325,8 @@ void SocketServer::initThreadsAppServer() {
 		m_thread_role_array[i].server = this;
 		if (i == 0)
 			m_thread_role_array[i].role = listen_incoming_data;
+		else if (i == 1)
+			m_thread_role_array[i].role = send_scheduled_messages;
 		else
 			m_thread_role_array[i].role = work;
 
@@ -350,6 +352,11 @@ void* SocketServer::threadFunctionAppServer(ThreadRoleEnum role) {
 		case listen_incoming_data:
 			common::print("Listen thread is listening...");
 			pollSocketArrayAppServer();
+			break;
+
+		case send_scheduled_messages:
+			common::print("Sending scheduled messages...");
+			S2CMessages::runScheduledMessageLoop();
 			break;
 
 		case work:

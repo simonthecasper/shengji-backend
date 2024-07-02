@@ -19,5 +19,7 @@ public:
 	Chat();
 
 	int addToChat(std::string player_id, std::string message);
+
+	void handleMessage(JSON message);
 };
 

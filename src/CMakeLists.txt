@@ -8,6 +8,7 @@ set(SOURCE_FILES
     SessionManager.cpp
     Game.cpp
     Session.cpp
+    Connection.cpp
     Player.cpp
     Play.cpp
     Deck.cpp

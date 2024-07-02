@@ -17,16 +17,23 @@ private:
 public:
 	SessionManager();
 
+	// General message handler that routes messages to more specific handlers.
 	void handleMessage(JSON message);
 
 private:
-	void removeSID(std::string sid);
 
+	// Creates a new session and returns the pointer to the created Session
 	Session* createNewSession();
 
+	// Associates a socketio SID to the session the user is joined into
 	void linkSIDToSessionID(std::string sid, std::string id);
 
+	// Returns whether a Session with the provided ID already exists
 	bool doesSessionIDExist(std::string id);
 
+	// Removes a socketio SID from the session the user is joined into.
+	void removeSID(std::string sid);
+
+	// Generates a new ID for a Session
 	std::string generateSessionID();
 };

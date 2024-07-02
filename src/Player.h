@@ -7,11 +7,7 @@ class Player
 private:
 	std::string 	m_id;
 	std::string 	m_username;
-	std::string		m_sid;
-
-	bool 			m_scoring;
 	std::string 	m_team;
-	std::string		m_game_value;
 
 	std::set<Card*> 		m_hand;
 
@@ -22,32 +18,12 @@ public:
 
 	Player(std::string id, std::string username);
 
-	Player(std::string id, std::string username, std::string sid);
-
-
-	// Changes scoring status of player
-	void toggleScoring();
-
-	// Sets the players SID to the provided value
-	void setSID(std::string sid);
-
-	// Returns the players SID
-	std::string getSID();
 
 	// Returns the name of the player
 	std::string getUsername() const;
 
 	// Returns the assigned ID of the player
 	std::string getID() const;
-
-	// Returns whether this player is scoring or not
-	bool isScoring() const;
-
-	// Sets the player to the provided team
-	void setTeam(std::string team);
-
-	// Returns the team of the player
-	std::string getTeam() const;
 
 	// Given a suit, rank, and id, returns whether this player has this card in
 	//	their hand
@@ -69,9 +45,7 @@ public:
 	//Returns the size of the players hand
 	int getHandSize() const;
 
-	//Sets the players personal game value (card their "team" is on in the macro scoring of the game)
-	void setPlayerGameValue(std::string game_value);
+	void setTeam(std::string team);
 
-	//Returns the players personal game value
-	std::string getPlayerGameValue();
+	std::string getTeam();
 };

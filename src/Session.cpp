@@ -6,8 +6,10 @@ Session::Session() {
 
 Session::Session(std::string id) {
 	m_id = id;
+	m_state = lobby;
 	m_chatlog = new Chat();
 	m_player_count = 0;
+	m_current_game = nullptr;
 }
 
 void Session::handleMessage(JSON message) {
@@ -16,114 +18,74 @@ void Session::handleMessage(JSON message) {
 	std::string task = message.at("task");
 
 	if (common::stringCompare(task, "chat")) {
-		addToChat(message);
+		m_chatlog->handleMessage(message);
 	}
 
 	else if (common::stringCompare(stage, "prelobby")) {
-		if (common::stringCompare(task, "new_session")) {
+		if (common::stringCompare(task, "new_session") || common::stringCompare(task, "join_session")) {
 			common::print("Adding player to new session...");
 			std::string sid = message.at("sid");
 			std::string username = message.at("username");
-			addPlayer(sid, username);
-		}
-
-		else if (common::stringCompare(task, "join_session")) {
-			std::string sid = message.at("sid");
-			std::string username = message.at("username");
-			addPlayer(sid, username);
+			createNewConnection(sid, username);
 		}
 	}
 
 	else if (common::stringCompare(stage, "lobby")) {
-		if (common::stringCompare(task, "player_set_team")) {
-			std::string player_id = message.at("player_id");
-			std::string team = message.at("team");
-			addPlayerToTeam(player_id, team);
-		}
-
-		else if (common::stringCompare(task, "start_game")) {
-
+		if (common::stringCompare(task, "create_game")) {
+			createGame(message);
 		}
 	}
 
-	else if (common::stringCompare(stage, "draw") || common::stringCompare(stage, "game")) {
+	else if (common::stringCompare(stage, "pregame") ||
+		common::stringCompare(stage, "draw") ||
+		common::stringCompare(stage, "game")) {
 		m_current_game->handleMessage(message);
 	}
 
-}
-
-void Session::addToChat(JSON message_json) {
-	std::string player_id = message_json.at("player_id");
-	std::string message = message_json.at("message");
-	m_chatlog->addToChat(player_id, message);
-
-	S2CMessages::sendBroadcastChat(m_player_list, player_id, message);
-}
-
-void Session::sendToOtherPlayersSID(std::string source_sid, JSON message) {
-	std::unordered_set<std::string>::iterator itr;
-	// Displaying set elements
-	for (itr = m_player_sids.begin(); itr != m_player_sids.end(); itr++) {
-		if (*itr != source_sid) {
-			common::sendThroughSocketSID(message.dump());
-		}
+	else {
+		common::print("ERROR: Provided message has no routing setup");
+		common::print(message.dump());
 	}
 }
 
-void Session::addPlayer(std::string sid, std::string username) {
+
+void Session::createNewConnection(std::string sid, std::string username) {
 	// Players SID already exists in this session
-	common::print("--Entered addPlayer");
 	if (sidInSession(sid)) {
 		common::print("Player is already in session");
 		return;
 	}
-	common::print("--Past return early");
 
 	std::string player_id = generatePlayerID();
-	Player* p = new Player(player_id, username, sid);
+	Player* p = new Player(player_id, username);
+	Connection* new_conn = new Connection(p, sid);
 
+	m_connection_list.push_back(new_conn);
 	m_player_ids.insert(player_id);
-	m_player_list.push_back(p);
-	m_player_sids.insert(sid);
 
-	m_player_count = (int)m_player_list.size();
-	m_id_to_sid[player_id] = sid;
-	m_sid_to_id[sid] = player_id;
-	m_id_to_player[player_id] = p;
-
-	m_player_teams[player_id] = "Unset";
-
+	m_player_count = (int)m_connection_list.size();
 	if (m_player_count == 1) { setHostPlayer(player_id); }
 
-	common::print("Player created... Sending outwards");
 
-	std::string host_id = m_host_player->getID();
-
-	S2CMessages::sendJoinSessionAck(sid, m_id, player_id);
-	S2CMessages::sendShareLobbyInfo(m_player_list, host_id, player_id);
-	S2CMessages::sendBroadcastNewPlayer(m_player_list, player_id, username);
+	S2CMessages::sendJoinSessionAck(new_conn, m_id);
+	S2CMessages::sendShareLobbyInfo(m_connection_list, m_host_connection->getPlayerID(), new_conn);
+	S2CMessages::sendBroadcastNewPlayer(m_connection_list, player_id, username);
 }
 
-void Session::removePlayerSID(std::string sid) {
-	std::string player_id = m_sid_to_id.at(sid);
-	Player* target = m_id_to_player.at(player_id);
+void Session::removeSID(std::string sid) {
+	if (!sidInSession(sid)) { return; }
 
-	m_player_list.remove(target);
+	Connection* target_conn = getConnectionFromSID(sid);
+	if (target_conn != nullptr) { target_conn->disconnectSID(); }
 
-	m_player_ids.erase(player_id);
 	m_player_sids.erase(sid);
-	m_sid_to_id.erase(sid);
-	m_id_to_player.erase(player_id);
 
-	m_player_count--;
 }
 
 std::string Session::generatePlayerID() {
-	common::print("---Creating playerID");
 	std::string random_string = "";
 	do {
-		common::print("----in loop");
-		const std::string CHARACTERS = "abcdefghijklmnopqrstuv";
+		const std::string CHARACTERS = "bcdfghjklmpqrtv";
 
 		std::random_device rd;
 		std::mt19937 generator(rd());
@@ -134,8 +96,6 @@ std::string Session::generatePlayerID() {
 			random_string += CHARACTERS[distribution(generator)];
 		}
 	} while (m_player_ids.find(random_string) != m_player_ids.end());
-	//Above means while random_string not in m_player_ids
-	//Perhaps make common::setContains function (and mapContainsKey, etc.)
 	common::print("---PlayerID created");
 	return random_string;
 }
@@ -145,54 +105,59 @@ std::string Session::getID() {
 }
 
 
-void Session::addPlayerToTeam(std::string player_id, std::string team) {
-	m_set_team_mutex.lock();
-	m_id_to_player[player_id]->setTeam(team);
-	m_player_teams[player_id] = team;
-	m_set_team_mutex.unlock();
-
-	S2CMessages::sendBroadcastTeamUpdate(m_player_list, m_player_teams);
-}
-
 bool Session::sidInSession(std::string sid) {
 	return m_player_sids.find(sid) != m_player_sids.end();
 }
 
 void Session::setHostPlayer(std::string player_id) {
-	m_host_player = m_id_to_player[player_id];
+	for (auto const& con : m_connection_list) {
+		if (common::stringCompare(con->getPlayerID(), player_id)) {
+			m_host_connection = con;
+			return;
+		}
+	}
 }
 
-
-void Session::checkAndCreateGame() {
-
+Connection* Session::getConnectionFromSID(std::string sid) {
+	for (auto const& curr_conn : m_connection_list) {
+		if (common::stringCompare(curr_conn->getSID(), sid)) {
+			return curr_conn;
+		}
+	}
+	return nullptr;
 }
 
-bool Session::checkIfLobbyReady() {
-	//Must have enough players and must be even count
-	if (m_player_count < 4 || m_player_count % 2 == 1) { return false; }
+void Session::createGame(JSON message) {
+	if (m_current_game != nullptr) {
+		common::print("A game already exists for Session " + m_id);
+		return;
+	}
 
-	//Teams must be evenly distributed and no one can be unset
-	std::pair<int, int> count = std::make_pair(0, 0);
-	for (const auto& player : m_player_teams) {
-		if (common::stringCompare(player.second, "Team1")) {
-			count.first++;
-		}
-		else if (common::stringCompare(player.second, "Team2")) {
-			count.second++;
-		}
-		else if (common::stringCompare(player.second, "Unset")) {
-			std::string message = "All players must be assigned to a team.";
-			S2CMessages::sendLobbyNotReady(m_host_player->getSID(), message);
-			return false;
+	std::string game = message.at("game");
+
+	if (common::stringCompare(game, "shengji")) {
+		if (checkLobbyReadyForGame(game)) {
+			m_current_game = new ShengJi();
+			S2CMessages::sendStartPregame(m_connection_list, "shengji");
 		}
 		else {
-			std::string message = "ERROR:: Unknown value in team assignment structure";
-			S2CMessages::sendLobbyNotReady(m_host_player->getSID(), message);
-			return false;
+			S2CMessages::sendLobbyNotReady(m_host_connection, "The lobby is not ready for the selected game.");
 		}
 	}
 
-	if (count.first != count.second) { return false; }
+	else {
+		common::print("ERROR: Session.createGame does not recognize the provided game name:" + game);
+		common::print("--Game creation message:" + message.dump());
+		common::print("");
+	}
+}
+
+bool Session::checkLobbyReadyForGame(std::string game) {
+	if (common::stringCompare(game, "shengji")) {
+		if (m_connection_list.size() % 2 != 0) {  //even number of players
+			return false;
+		}
+	}
 
 	return true;
 }

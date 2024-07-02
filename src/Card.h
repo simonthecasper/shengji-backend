@@ -19,8 +19,6 @@ private:
 
 public:
 
-    int testfield;
-
     Card();
 
     Card(std::string suit_con, int rank_con, int id);

@@ -20,7 +20,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include <time.h>
+#include <chrono>
 
 #include "../include-3p/json.hpp"
 
@@ -28,19 +28,21 @@
 using JSON = nlohmann::json;
 
 typedef unsigned char BYTE;
+typedef std::chrono::milliseconds time_ms;
 
 namespace common {
+	static std::mutex	m_socket_send_mutex;
+	static int 			m_socketio_server;
 
-	static std::mutex m_socket_send_mutex;
-	static int m_socketio_server;
-
-	static time_t m_start_time;
-	static std::mutex m_time_mutex;
+	static time_ms 		m_start_time;
+	static std::mutex 	m_time_mutex;
 
 
 	int sendThroughSocket(int destination, JSON message_json);
 
 	int sendThroughSocket(int destination, std::string message_str);
+
+	int sendToMiddleman(JSON message_json);
 
 	int sendThroughSocketSID(JSON message_json);
 
@@ -56,6 +58,5 @@ namespace common {
 
 	void setStartTime();
 
-	double getTime();
-
+	time_ms getTime();
 }

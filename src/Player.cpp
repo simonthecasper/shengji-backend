@@ -14,30 +14,8 @@ Player::Player(std::string id) {
 Player::Player(std::string id, std::string username) {
 	m_id = id;
 	m_username = username;
+	m_team = "Unset";
 }
-
-
-Player::Player(std::string id, std::string username, std::string sid) {
-	m_id = id;
-	m_username = username;
-	m_sid = sid;
-}
-
-
-void Player::toggleScoring() {
-	m_scoring = !m_scoring;
-}
-
-
-void Player::setSID(std::string sid) {
-	m_sid = sid;
-}
-
-
-std::string Player::getSID() {
-	return m_sid;
-}
-
 
 std::string Player::getUsername() const {
 	return m_username;
@@ -45,18 +23,6 @@ std::string Player::getUsername() const {
 
 std::string Player::getID() const {
 	return m_id;
-}
-
-bool Player::isScoring() const {
-	return m_scoring;
-}
-
-void Player::setTeam(std::string team) {
-	m_team = team;
-}
-
-std::string Player::getTeam() const {
-	return m_team;
 }
 
 void Player::addCardToHand(Card* card) {
@@ -90,10 +56,10 @@ int Player::getHandSize() const {
 	return m_hand.size();
 }
 
-void Player::setPlayerGameValue(std::string game_value) {
-	m_game_value = game_value;
+void Player::setTeam(std::string team) {
+	m_team = team;
 }
 
-std::string Player::getPlayerGameValue() {
-	return m_game_value;
+std::string Player::getTeam() {
+	return m_team;
 }

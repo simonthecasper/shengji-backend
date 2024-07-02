@@ -15,3 +15,14 @@ int Chat::addToChat(std::string player_id, std::string message) {
 	m_mutex_chatlog.unlock();
 	return 0;
 }
+
+
+void Chat::handleMessage(JSON message) {
+	common::print("In Chat handler...");
+	std::string task = message.at("task");
+
+	if (common::stringCompare(task, "chat")) {
+		std::string player_id = message.at("player_id");
+		addToChat(player_id, message);
+	}
+}

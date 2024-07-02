@@ -24,6 +24,11 @@ int common::sendThroughSocket(int destination, std::string message_str) {
 	return 0;
 }
 
+int common::sendToMiddleman(JSON message_json) {
+	std::string message_str = message_json.dump();
+	return sendThroughSocketSID(message_str);
+}
+
 int common::sendThroughSocketSID(JSON message_json) {
 	std::string message_str = message_json.dump();
 	return sendThroughSocketSID(message_str);
@@ -49,9 +54,9 @@ int common::sendThroughSocketSID(std::string message_str) {
 
 	const char* header_char = header.dump().c_str();
 
-	common::print("Sending header:");
+	// common::print("Sending header:");
 	common::print(header.dump().c_str());
-	common::print("");
+	// common::print("");
 
 	int header_send_result = send(m_socketio_server, header_char, (int)strlen(header_char), 0);
 	if (header_send_result == -1) {
@@ -60,9 +65,9 @@ int common::sendThroughSocketSID(std::string message_str) {
 		return -1;
 	}
 
-	common::print("Sending message:");
+	// common::print("Sending message:");
 	common::print(message_str);
-	common::print("");
+	// common::print("");
 
 	int send_result = send(m_socketio_server, message_char, (int)strlen(message_char), 0);
 	if (send_result == -1) {
@@ -95,13 +100,17 @@ void common::setSocketIOServerFD(int fd) {
 }
 
 void common::setStartTime() {
-	m_start_time = time(0);
+	m_start_time = getTime();
 }
 
-double common::getTime() {
+time_ms common::getTime() {
 	m_time_mutex.lock();
-	double diff = difftime(time(0), m_start_time);
+
+	time_ms ms = std::chrono::duration_cast<time_ms>(
+		std::chrono::system_clock::now().time_since_epoch()
+	);
+
 	m_time_mutex.unlock();
 
-	return diff;
+	return ms;
 }

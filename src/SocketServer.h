@@ -27,7 +27,7 @@
 
 class SocketServer;
 
-enum ThreadRoleEnum { listen_incoming_data, work };
+enum ThreadRoleEnum { listen_incoming_data, send_scheduled_messages, work };
 enum SocketReadState { awaiting_header, awaiting_body };
 
 

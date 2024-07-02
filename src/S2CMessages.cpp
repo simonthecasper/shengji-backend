@@ -1,20 +1,74 @@
 #include "S2CMessages.h"
 
 
-void S2CMessages::sendBroadcastChat(std::list<Player*> players, std::string player_id, std::string message) {
-    std::list<Player*>::iterator itr;
+void S2CMessages::addScheduledMessage(Connection* connection, JSON message, time_ms send_time) {
+    m_scheduled_send_mutex.lock();
 
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
+    ScheduledMessage* new_message = new ScheduledMessage();
+    new_message->m_message = message;
+    new_message->m_send_time = send_time;
+    new_message->m_recipient = connection;
+
+    m_scheduled_send_queue.push(new_message);
+    m_scheduled_send_mutex.unlock();
+
+    updateNextSendTime();
+}
+
+
+ScheduledMessage* S2CMessages::removeScheduledMessage() {
+    m_scheduled_send_mutex.lock();
+    ScheduledMessage* ret = m_scheduled_send_queue.top();
+    m_scheduled_send_queue.pop();
+    m_scheduled_send_mutex.unlock();
+    return ret;
+}
+
+
+void S2CMessages::updateNextSendTime() {
+    m_scheduled_send_mutex.lock();
+
+    if (m_scheduled_send_queue.size() > 0) {
+        m_next_send_time = m_scheduled_send_queue.top()->m_send_time;
+    }
+    else {
+        m_next_send_time = std::chrono::milliseconds::max();
+    }
+
+    m_scheduled_send_mutex.lock();
+}
+
+
+void S2CMessages::runScheduledMessageLoop() {
+    updateNextSendTime();
+    while (true) {
+        if (common::getTime() > m_next_send_time) {
+            ScheduledMessage* to_send = removeScheduledMessage();
+
+            JSON message = to_send->m_message;
+            Connection* recipiet = to_send->m_recipient;
+
+            recipiet->sendMessageToUser(message);
+            delete to_send;
+
+            updateNextSendTime();
+        }
+    }
+}
+
+
+void S2CMessages::sendBroadcastChat(std::list<Connection*> connections, std::string player_id, std::string message) {
+    for (auto const& curr_conn : connections) {
         JSON s2c_message = {
             {"task", "chat"},
             {"player_id", player_id},
             {"message", message},
-            {"sid", curr_player->getSID()}
+            {"sid", curr_conn->getSID()}
         };
-        common::sendThroughSocketSID(s2c_message);
+        curr_conn->sendMessageToUser(s2c_message);
     }
 }
+
 
 void S2CMessages::sendJoinSessionNotFound(std::string sid) {
     JSON s2c_message = {
@@ -30,131 +84,131 @@ void S2CMessages::sendJoinSessionNotFound(std::string sid) {
 /*-------------------------------------------*/
 /*                Lobby Stage                */
 /*-------------------------------------------*/
-void S2CMessages::sendJoinSessionAck(std::string sid, std::string session_id, std::string player_id) {
-    common::print("Sending join_session_ack...");
+void S2CMessages::sendJoinSessionAck(Connection* user_connection, std::string session_id) {
     JSON s2c_message = {
         {"stage", "lobby"},
         {"task", "join_session_ack"},
-        {"player_id", player_id},
+        {"player_id", user_connection->getPlayerID()},
         {"session_id", session_id},
-        {"sid", sid}
+        {"sid", user_connection->getSID()}
     };
-    common::sendThroughSocketSID(s2c_message);
+    user_connection->sendMessageToUser(s2c_message);
 }
 
 
-void S2CMessages::sendBroadcastNewPlayer(std::list<Player*> players, std::string player_id, std::string username) {
-    common::print("Sending broadcast_new_player...\n");
-    std::list<Player*>::iterator itr;
+void S2CMessages::sendBroadcastNewPlayer(std::list<Connection*> connections, std::string player_id, std::string username) {
+    JSON s2c_message = {
+        {"stage", "lobby" },
+        { "task", "broadcast_new_player" },
+        {"player_id", player_id},
+        {"username", username},
+    };
 
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-
-        if (!common::stringCompare(curr_player->getID(), player_id)) {
-            JSON s2c_message = {
-            {"stage", "lobby" },
-            { "task", "broadcast_new_player" },
-            {"player_id", player_id},
-            {"username", username},
-            {"sid", curr_player->getSID()}
-            };
-            common::sendThroughSocketSID(s2c_message);
+    for (auto const& curr_conn : connections) {
+        if (!common::stringCompare(curr_conn->getPlayerID(), player_id)) {
+            curr_conn->sendMessageToUser(s2c_message);
         }
     }
 }
 
-void S2CMessages::sendShareLobbyInfo(std::list<Player*> players, std::string host_player_id, std::string target_player_id) {
-    common::print("Sending share_lobby_info...");
+
+void S2CMessages::sendShareLobbyInfo(std::list<Connection*> connections, std::string host_player_id, Connection* target_connection) {
     JSON s2c_message = {
             { "stage", "lobby" },
             { "task", "share_lobby_info" },
             { "host_player_id", host_player_id }
     };
 
-    s2c_message["other_players"] = {};
+    s2c_message["other_connections"] = {};
 
-    for (auto const& player : players) {
-        if (!common::stringCompare(player->getID(), target_player_id)) {
-            s2c_message["other_players"].push_back(
+    for (auto const& curr_conn : connections) {
+        if (!common::stringCompare(curr_conn->getPlayerID(), target_connection->getPlayerID())) {
+            s2c_message["other_connections"].push_back(
                 {
-                    {"player_id", player->getID()},
-                    {"username", player->getUsername()},
-                    {"team", player->getTeam()},
+                    {"player_id", curr_conn->getPlayerID()},
+                    {"username", curr_conn->getUsername()},
                 });
 
-            s2c_message["sid"] = player->getSID();
-            common::sendThroughSocketSID(s2c_message);
+            s2c_message["sid"] = curr_conn->getSID();
         }
     }
+
+    target_connection->sendMessageToUser(s2c_message);
 }
 
 
-void S2CMessages::sendBroadcastHostPlayer(std::list<Player*> players, std::string player_id) {
-    std::list<Player*>::iterator itr;
+void S2CMessages::sendBroadcastHostPlayer(std::list<Connection*> connections, std::string host_player_id) {
+    JSON s2c_message = {
+        {"stage", "lobby" },
+        { "task", "broadcast_host_player" },
+        {"host_player_id", host_player_id},
+    };
 
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-        JSON s2c_message = {
-            {"stage", "lobby" },
-            { "task", "broadcast_host_player" },
-            {"player_id", player_id},
-            {"sid", curr_player->getSID()}
-        };
-        common::sendThroughSocketSID(s2c_message);
-    }
+    for (auto const& curr_conn : connections)
+        curr_conn->sendMessageToUser(s2c_message);
 }
 
-void S2CMessages::sendBroadcastTeamUpdate(std::list<Player*> players, std::unordered_map<std::string, std::string> teams) {
-    double time = common::getTime();
-
-    std::list<Player*>::iterator itr;
-
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-        JSON s2c_message = {
-            {"stage", "lobby" },
-            { "task", "broadcast_team_update" },
-            { "time", time},
-            {"sid", curr_player->getSID()}
-        };
-
-        for (auto const& x : teams) {
-            s2c_message["teams"][x.first] = x.second;
-        }
-
-        common::sendThroughSocketSID(s2c_message);
-    }
-}
-
-void S2CMessages::sendLobbyNotReady(std::string sid, std::string message) {
+void S2CMessages::sendLobbyNotReady(Connection* host_player_connection, std::string message) {
     JSON s2c_message = {
         { "stage", "lobby" },
         { "task", "lobby_not_ready" },
         { "message", message },
-        { "sid", sid }
+        { "sid", host_player_connection->getSID() }
     };
-    common::sendThroughSocketSID(s2c_message);
+
+    host_player_connection->sendMessageToUser(s2c_message);
 }
 
-void S2CMessages::sendBeginDrawStage(std::list<Player*> players) {
-    std::list<Player*>::iterator itr;
+void S2CMessages::sendBeginDrawStage(std::list<Connection*> connections) {
+    JSON s2c_message = {
+        {"stage", "lobby" },
+        { "task", "begin_draw_stage" },
+    };
 
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-        JSON s2c_message = {
+    for (auto const& curr_conn : connections)
+        curr_conn->sendMessageToUser(s2c_message);
+}
+
+void S2CMessages::sendStartPregame(std::list<Connection*> connections, std::string game) {
+    JSON s2c_message = {
+        {"stage", "lobby" },
+        { "task", "start_pregame" },
+        { "game", game },
+    };
+
+    for (auto const& curr_conn : connections)
+        curr_conn->sendMessageToUser(s2c_message);
+}
+
+
+/*-------------------------------------------*/
+/*              Pregame Stage                */
+/*-------------------------------------------*/
+void S2CMessages::sendBroadcastTeamUpdate(std::list<Connection*> connections) {
+    double time = std::chrono::duration<double>(common::getTime()).count();
+
+    JSON s2c_message = {
             {"stage", "lobby" },
-            { "task", "begin_draw_stage" },
-            {"sid", curr_player->getSID()}
-        };
-        common::sendThroughSocketSID(s2c_message);
+            { "task", "broadcast_team_update" },
+            { "time", time}
+    };
+
+    for (auto const& curr_conn : connections) {
+        s2c_message["teams"][curr_conn->getPlayerID()] = curr_conn->getTeam();
+    }
+
+    for (auto const& curr_conn : connections) {
+        curr_conn->sendMessageToUser(s2c_message);
     }
 }
+
+
 
 
 /*-------------------------------------------*/
 /*                Draw Stage                 */
 /*-------------------------------------------*/
-void S2CMessages::sendDealCardTargetPlayer(std::string sid, Card* card) {
+void S2CMessages::sendDealCardTargetPlayer(Connection* target_connection, Card* card) {
     JSON s2c_message = {
         {"stage", "draw" },
         { "task", "deal_card_target_player" },
@@ -165,141 +219,105 @@ void S2CMessages::sendDealCardTargetPlayer(std::string sid, Card* card) {
                 {"id", card->getID()}
             }
         },
-        {"sid", sid}
+        {"sid", target_connection->getSID()}
     };
-    common::sendThroughSocketSID(s2c_message);
+    target_connection->sendMessageToUser(s2c_message);
 }
 
-void S2CMessages::sendDealCardOtherPlayer(std::list<Player*> players, std::string drawing_player_id) {
-    std::list<Player*>::iterator itr;
-
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-
-        if (curr_player->getID() == drawing_player_id) { continue; }
-
-        JSON s2c_message = {
+void S2CMessages::sendDealCardOtherPlayer(std::list<Connection*> connections, std::string drawing_player_id) {
+    JSON s2c_message = {
             {"stage", "draw" },
             { "task", "deal_card_other_player" },
-            {"sid", curr_player->getSID()}
-        };
-        common::sendThroughSocketSID(s2c_message);
+    };
+
+    for (auto const& curr_conn : connections) {
+        if (common::stringCompare(curr_conn->getPlayerID(), drawing_player_id)) { continue; }
+        curr_conn->sendMessageToUser(s2c_message);
     }
 }
 
-void S2CMessages::sendBroadcastMatchCard(std::list<Player*> players, Card* match_card, std::string setting_player_id) {
-    std::list<Player*>::iterator itr;
+void S2CMessages::sendBroadcastMatchCard(std::list<Connection*> connections, Card* match_card, std::string setting_player_id) {
+    JSON s2c_message = {
+        {"stage", "draw" },
+        { "task", "broadcast_match_card" },
+        { "setting_player_id", setting_player_id },
+        { "match_card",
+            {
+                {"suit", match_card->getSuit()},
+                {"value", match_card->getID()},
+                {"id", match_card->getID()}
+            }
+        },
+    };
 
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-
-        JSON s2c_message = {
-            {"stage", "draw" },
-            { "task", "broadcast_match_card" },
-            { "setting_player_id", setting_player_id },
-            { "match_card",
-                {
-                    {"suit", match_card->getSuit()},
-                    {"value", match_card->getID()},
-                    {"id", match_card->getID()}
-                }
-            },
-            {"sid", curr_player->getSID()}
-        };
-        common::sendThroughSocketSID(s2c_message);
-    }
+    for (auto const& curr_conn : connections)
+        curr_conn->sendMessageToUser(s2c_message);
 }
 
-void S2CMessages::setBroadcastLordPlayer(std::list<Player*> players, std::string lord_player_id) {
-    std::list<Player*>::iterator itr;
+void S2CMessages::setBroadcastLordPlayer(std::list<Connection*> connections, std::string lord_player_id) {
+    JSON s2c_message = {
+        {"stage", "draw" },
+        { "task", "broadcast_match_card" },
+        { "lord_player_id", lord_player_id },
+    };
 
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-
-        JSON s2c_message = {
-            {"stage", "draw" },
-            { "task", "broadcast_match_card" },
-            { "lord_player_id", lord_player_id },
-            {"sid", curr_player->getSID()}
-        };
-        common::sendThroughSocketSID(s2c_message);
-    }
+    for (auto const& curr_conn : connections)
+        curr_conn->sendMessageToUser(s2c_message);
 }
 
-void S2CMessages::endMainDraw(std::list<Player*> players) {
-    std::list<Player*>::iterator itr;
+void S2CMessages::endMainDraw(std::list<Connection*> connections) {
+    JSON s2c_message = {
+        {"stage", "draw" },
+        { "task", "end_main_draw" },
+    };
 
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-
-        JSON s2c_message = {
-            {"stage", "draw" },
-            { "task", "end_main_draw" },
-            {"sid", curr_player->getSID()}
-        };
-        common::sendThroughSocketSID(s2c_message);
-    }
+    for (auto const& curr_conn : connections)
+        curr_conn->sendMessageToUser(s2c_message);
 }
 
-void S2CMessages::sendStartGame(std::list<Player*> players) {
-    std::list<Player*>::iterator itr;
+void S2CMessages::sendStartGame(std::list<Connection*> connections) {
+    JSON s2c_message = {
+        {"stage", "draw" },
+        { "task", "start_game" },
+    };
 
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-
-        JSON s2c_message = {
-            {"stage", "draw" },
-            { "task", "start_game" },
-            {"sid", curr_player->getSID()}
-        };
-        common::sendThroughSocketSID(s2c_message);
-    }
+    for (auto const& curr_conn : connections)
+        curr_conn->sendMessageToUser(s2c_message);
 }
 
 
 /*-------------------------------------------*/
 /*                Game Stage                 */
 /*-------------------------------------------*/
-void S2CMessages::sendBroadcastTrickStarter(std::list<Player*> players, std::string player_id, int trick_number) {
-    std::list<Player*>::iterator itr;
-
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-
+void S2CMessages::sendBroadcastTrickStarter(std::list<Connection*> connections, std::string player_id, int trick_number) {
+    for (auto const& curr_conn : connections) {
         JSON s2c_message = {
             {"stage", "game" },
             { "task", "broadcast_trick_starter" },
             { "starter_player_id" , player_id },
             { "trick_number", trick_number },
-            { "sid", curr_player->getSID() }
+            { "sid", curr_conn->getSID() }
         };
-        common::sendThroughSocketSID(s2c_message);
+        curr_conn->sendMessageToUser(s2c_message);
     }
 }
 
-void S2CMessages::sendBroadcastExpecedPlayer(std::list<Player*> players, std::string player_id) {
-    std::list<Player*>::iterator itr;
-
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-
+void S2CMessages::sendBroadcastExpectedPlayer(std::list<Connection*> connections, std::string player_id) {
+    for (auto const& curr_conn : connections) {
         JSON s2c_message = {
             {"stage", "game" },
             { "task", "broadcast_expected_player" },
             { "expected_player_id", player_id },
-            { "sid", curr_player->getSID() }
+            { "sid", curr_conn->getSID() }
         };
-        common::sendThroughSocketSID(s2c_message);
+        curr_conn->sendMessageToUser(s2c_message);
     }
 }
 
-void S2CMessages::sendBroadcastPlay(std::list<Player*> players, std::string source_player_id, Play* source_play) {
-    std::list<Player*>::iterator itr;
+void S2CMessages::sendBroadcastPlay(std::list<Connection*> connections, std::string source_player_id, Play* source_play) {
     std::pair<int, int> structure = source_play->getStructure();
 
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-
+    for (auto const& curr_conn : connections) {
         JSON s2c_message = {
             {"stage", "game" },
             { "task", "broadcast_play" },
@@ -310,54 +328,46 @@ void S2CMessages::sendBroadcastPlay(std::list<Player*> players, std::string sour
                     { "component_length", structure.second }
                 }
             },
-            { "sid", curr_player->getSID() }
+            { "sid", curr_conn->getSID() }
         };
-        common::sendThroughSocketSID(s2c_message);
+        curr_conn->sendMessageToUser(s2c_message);
     }
 }
 
-void S2CMessages::sendPlayError(std::string sid, std::string message) {
+void S2CMessages::sendPlayError(Connection* target_connection, std::string message) {
     JSON s2c_message = {
         {"stage", "game" },
         { "task", "play_error" },
         { "message", message },
-        { "sid", sid }
+        { "sid", target_connection->getSID() }
     };
-    common::sendThroughSocketSID(s2c_message);
+    target_connection->sendMessageToUser(s2c_message);
 }
 
-void S2CMessages::sendBroadcastWinningPlayer(std::list<Player*> players, std::string player_id) {
-    std::list<Player*>::iterator itr;
-
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-
+void S2CMessages::sendBroadcastWinningPlayer(std::list<Connection*> connections, std::string player_id) {
+    for (auto const& curr_conn : connections) {
         JSON s2c_message = {
             {"stage", "game" },
             { "task", "broadcast_winning_player" },
             { "winning_player_id", player_id },
-            { "sid", curr_player->getSID() }
+            { "sid", curr_conn->getSID() }
         };
-        common::sendThroughSocketSID(s2c_message);
+        curr_conn->sendMessageToUser(s2c_message);
     }
 }
 
-void S2CMessages::sendBroadcastTrickEnd(std::list<Player*> players) {
-    std::list<Player*>::iterator itr;
-
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-
+void S2CMessages::sendBroadcastTrickEnd(std::list<Connection*> connections) {
+    for (auto const& curr_conn : connections) {
         JSON s2c_message = {
             {"stage", "game" },
             { "task", "broadcast_trick_end" },
-            { "sid", curr_player->getSID() }
+            { "sid", curr_conn->getSID() }
         };
-        common::sendThroughSocketSID(s2c_message);
+        curr_conn->sendMessageToUser(s2c_message);
     }
 }
 
-void S2CMessages::sendBroadcastUpdateScore(std::list<Player*> players, std::list<Card*> scored_cards, int points_scored) {
+void S2CMessages::sendBroadcastUpdateScore(std::list<Connection*> connections, std::list<Card*> scored_cards, int points_scored) {
 
     JSON s2c_message = {
             {"stage", "game" },
@@ -376,26 +386,19 @@ void S2CMessages::sendBroadcastUpdateScore(std::list<Player*> players, std::list
             });
     }
 
-    std::list<Player*>::iterator itr;
-
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-        s2c_message["sid"] = curr_player->getSID();
-        common::sendThroughSocketSID(s2c_message);
+    for (auto const& curr_conn : connections) {
+        s2c_message["sid"] = curr_conn->getSID();
+        curr_conn->sendMessageToUser(s2c_message);
     }
 }
 
-void S2CMessages::sendFinishGame(std::list<Player*> players) {
-    std::list<Player*>::iterator itr;
-
-    for (itr = players.begin(); itr != players.end(); itr++) {
-        Player* curr_player = *itr;
-
+void S2CMessages::sendFinishGame(std::list<Connection*> connections) {
+    for (auto const& curr_conn : connections) {
         JSON s2c_message = {
             {"stage", "game" },
             { "task", "finish_game" },
-            { "sid", curr_player->getSID() }
+            { "sid", curr_conn->getSID() }
         };
-        common::sendThroughSocketSID(s2c_message);
+        curr_conn->sendMessageToUser(s2c_message);
     }
 }
