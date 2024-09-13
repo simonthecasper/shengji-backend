@@ -12,10 +12,25 @@ Card::Card() {
     m_id = -1;
 }
 
+Card::Card(std::string suit, std::string value, int rank, int id) {
+    m_suit = suit;
+    m_value = value;
+    m_rank = rank;
+    m_id = id;
+    m_strong = false;
 
-Card::Card(std::string suit_con, int rank_con, int id) {
-    m_suit = suit_con;
-    m_rank = rank_con;
+    //Set points
+    if (common::stringCompare(m_value, "5"))
+        m_points = 5;
+    else if (common::stringCompare(m_value, "10") || common::stringCompare(m_value, "King"))
+        m_points = 10;
+    else
+        m_points = 0;
+}
+
+Card::Card(std::string suit, int rank, int id) {
+    m_suit = suit;
+    m_rank = rank;
     m_id = id;
 
     m_strong = false;

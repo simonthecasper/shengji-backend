@@ -150,7 +150,12 @@ async def server_to_web():
             server_message_str = json.dumps(server_message_dict)
 
             print("S2C sending message to client:", server_message_dict)
-            await sio.emit(event="server_message", data=server_message_str, room=sid)
+            
+            task = server_message_dict["task"]
+            if (task == "broadcast_chat"):
+                await sio.emit(event="chat_message", data=server_message_str, room=sid)
+            else:
+                await sio.emit(event="server_message", data=server_message_str, room=sid)
 
 
 async def main():

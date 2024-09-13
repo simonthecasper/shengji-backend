@@ -2,22 +2,27 @@
 #include <set>
 #include "Play.h"
 
+
 class Player
 {
-private:
+public:
 	std::string 	m_id;
 	std::string 	m_username;
+	std::string 	m_color;
+
+	std::set<Card*> 	m_hand;
+
 	std::string 	m_team;
+	std::string		m_progress_card;
+	bool			m_reveal_eligible;
 
-	std::set<Card*> 		m_hand;
+	JSON			m_player_attributes;
 
-public:
 	Player();
 
 	Player(std::string id);
 
 	Player(std::string id, std::string username);
-
 
 	// Returns the name of the player
 	std::string getUsername() const;
@@ -45,7 +50,35 @@ public:
 	//Returns the size of the players hand
 	int getHandSize() const;
 
+	// Sets the team of the player
 	void setTeam(std::string team);
 
+	// Returns the team of the player
 	std::string getTeam();
+
+	// Sets the preferred color of this player
+	void setColor(std::string color);
+
+	// Returns the preferred color of the player
+	std::string getColor() const;
+
+	// Sets the reveal elegibility of the player
+	void setRevealElegibility(bool elegible);
+
+	// Toggles and returns the reveal elegibility of this player
+	bool toggleRevealEligibility();
+
+	// Returns the reveal eligibility of this player
+	bool getRevealElegibility();
+
+	void setProgressCard(std::string card_value);
+
+	std::string incrementProgressCard();
+
+
+	JSON getPlayerAttributes() const;
+
+protected:
+	void updatePlayerAttributes();
+
 };

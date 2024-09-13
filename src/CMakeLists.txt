@@ -7,6 +7,7 @@ set(SOURCE_FILES
     AcceptedSocket.cpp
     SessionManager.cpp
     Game.cpp
+    ShengJi.cpp
     Session.cpp
     Connection.cpp
     Player.cpp

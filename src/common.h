@@ -37,6 +37,7 @@ namespace common {
 	static time_ms 		m_start_time;
 	static std::mutex 	m_time_mutex;
 
+	static std::vector<std::string> ProgressCards = { "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace" };
 
 	int sendThroughSocket(int destination, JSON message_json);
 
@@ -59,4 +60,6 @@ namespace common {
 	void setStartTime();
 
 	time_ms getTime();
+
+	bool isProgressCard(std::string card);
 }

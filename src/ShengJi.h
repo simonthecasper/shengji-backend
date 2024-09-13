@@ -2,8 +2,11 @@
 
 #include "Game.h"
 
-enum GameState { draw, game };
-enum DrawMode { set, compete };
+#define DEFAULT_PROGRESS_CARD   "2"
+
+
+enum GameState { pregame, draw, game };
+
 
 class ShengJi : public Game {
 private:
@@ -13,8 +16,6 @@ private:
 
     std::string         m_strong_suit;
     std::string         m_strong_value;
-
-    DrawMode    m_draw_mode;
 
     Connection* m_lord_player;
     Connection* m_trick_starter;
@@ -37,18 +38,18 @@ public:
     void handleMessage(JSON message) override;
 
 private:
+    // TODO
+    void createDeck(int player_count, int deck_count) override;
+
+    // Updates the player with the provided ID to be on the given team
+    void updatePlayerTeam(std::string player_id, std::string team) override;
+
     // Receives a play from the expected player and updates the game state accordingly
     void processExpectedPlay(JSON message);
 
     // Returns true if the incoming message is from the current expected player
     // Returns false if the incoming message is from a different player
     bool isMessageFromExpectedPlayer(JSON message);
-
-    // Deals a card to the given player
-    void dealCardToPlayer(Connection* target_player);
-
-    // Notifies all other players that a player has received a new card
-    void notifyOtherPlayersOfCardDeal(Connection* dealt_player);
 
     // Sets lord_player and informs all players in the session of this change
     void setLordPlayer(Connection* lord_player);
@@ -68,4 +69,18 @@ private:
     // Sets strong suit for the game and informs all players in the session of this change
     void setStrongSuit(std::string strong_suit);
 
+    // Starts a game with the provided settings
+    void startGameWithSettings(JSON message);
+
+    // Sets the player with the provided player_id to have the provided reveal eligibility
+    void setPlayerRevealEligibility(std::string player_id, bool eligibile);
+
+    // Deals deck out to all players
+    void dealCards();
+
+    // Deals a card to the given player
+    void dealCardToPlayer(Connection* target_player);
+
+    // Notifies all other players that a player has received a new card
+    void notifyOtherPlayersOfCardDeal(Connection* dealt_player);
 };

@@ -18,22 +18,15 @@ that don't have connected players.
 
 enum ConnectionState { user_connected, user_disconnected };
 
-class Connection {
+class Connection : public Player {
 private:
     ConnectionState m_state;
 
-    Player* m_player;
+    // Player* m_player;
     std::string m_sid;
 
 public:
-    // Basic constructor with all fields
-    Connection(Player* player, std::string sid);
-
-    // Returns a pointer to the player object associated with this Connection
-    Player* getPlayer();
-
-    // Returns the ID of the player associated with this connection
-    std::string getPlayerID();
+    Connection(std::string id, std::string username, std::string sid);
 
     // Sets the SID of this connnection to the provided SID if there is currently no SID
     // associated with this Connection
@@ -44,22 +37,13 @@ public:
 
     // Unassociates this Connection's SID and sets this connections state to user_disconnected
     // Returns 0 if the disconnection was successful
-    // Returns -1 if the Connection was already assicoated with an SID
+    // Returns -1 if the Connection was already disassociated with an SID
     int disconnectSID();
 
     // Returns the SID to the socketIO connection associated with this Connection
     std::string getSID();
 
-    // Returns the username of the player associated with the connection
-    std::string getUsername();
-
     // Send the provided message to the user if a user is connected.
     // If no user is connected, TODO: CREATE MOVE ENGINE AND SEND TO ENGINE
     int sendMessageToUser(JSON message);
-
-    // Sets the team of the associated player to the provided team
-    void setTeam(std::string team);
-
-    // Returns the team the player on this connection is on
-    std::string getTeam();
 };

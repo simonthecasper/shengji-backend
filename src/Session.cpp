@@ -48,7 +48,6 @@ void Session::handleMessage(JSON message) {
 	}
 }
 
-
 void Session::createNewConnection(std::string sid, std::string username) {
 	// Players SID already exists in this session
 	if (sidInSession(sid)) {
@@ -57,8 +56,7 @@ void Session::createNewConnection(std::string sid, std::string username) {
 	}
 
 	std::string player_id = generatePlayerID();
-	Player* p = new Player(player_id, username);
-	Connection* new_conn = new Connection(p, sid);
+	Connection* new_conn = new Connection(player_id, username, sid);
 
 	m_connection_list.push_back(new_conn);
 	m_player_ids.insert(player_id);
@@ -68,8 +66,9 @@ void Session::createNewConnection(std::string sid, std::string username) {
 
 
 	S2CMessages::sendJoinSessionAck(new_conn, m_id);
-	S2CMessages::sendShareLobbyInfo(m_connection_list, m_host_connection->getPlayerID(), new_conn);
-	S2CMessages::sendBroadcastNewPlayer(m_connection_list, player_id, username);
+	S2CMessages::sendSharePlayerAttributes(m_connection_list);
+	S2CMessages::sendBroadcastHostPlayer(m_connection_list, m_host_connection->getID());
+	// S2CMessages::sendBroadcastNewPlayer(m_connection_list, player_id, username);
 }
 
 void Session::removeSID(std::string sid) {
@@ -79,7 +78,6 @@ void Session::removeSID(std::string sid) {
 	if (target_conn != nullptr) { target_conn->disconnectSID(); }
 
 	m_player_sids.erase(sid);
-
 }
 
 std::string Session::generatePlayerID() {
@@ -100,25 +98,24 @@ std::string Session::generatePlayerID() {
 	return random_string;
 }
 
-std::string Session::getID() {
+std::string Session::getID() const {
 	return m_id;
 }
 
-
-bool Session::sidInSession(std::string sid) {
+bool Session::sidInSession(std::string sid) const {
 	return m_player_sids.find(sid) != m_player_sids.end();
 }
 
 void Session::setHostPlayer(std::string player_id) {
 	for (auto const& con : m_connection_list) {
-		if (common::stringCompare(con->getPlayerID(), player_id)) {
+		if (common::stringCompare(con->getID(), player_id)) {
 			m_host_connection = con;
 			return;
 		}
 	}
 }
 
-Connection* Session::getConnectionFromSID(std::string sid) {
+Connection* Session::getConnectionFromSID(std::string sid) const {
 	for (auto const& curr_conn : m_connection_list) {
 		if (common::stringCompare(curr_conn->getSID(), sid)) {
 			return curr_conn;
@@ -140,9 +137,6 @@ void Session::createGame(JSON message) {
 			m_current_game = new ShengJi();
 			S2CMessages::sendStartPregame(m_connection_list, "shengji");
 		}
-		else {
-			S2CMessages::sendLobbyNotReady(m_host_connection, "The lobby is not ready for the selected game.");
-		}
 	}
 
 	else {
@@ -152,9 +146,11 @@ void Session::createGame(JSON message) {
 	}
 }
 
-bool Session::checkLobbyReadyForGame(std::string game) {
+bool Session::checkLobbyReadyForGame(std::string game) const {
 	if (common::stringCompare(game, "shengji")) {
 		if (m_connection_list.size() % 2 != 0) {  //even number of players
+			std::string message = "There must be an even number of players in the lobby to transition to pregame.";
+			S2CMessages::sendLobbyNotReady(m_host_connection, message);
 			return false;
 		}
 	}

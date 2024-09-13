@@ -5,7 +5,6 @@ SessionManager::SessionManager() {
 
 }
 
-
 void SessionManager::handleMessage(JSON message) {
     common::print("In SessionManager handler...");
     std::string message_as_string = message.dump();
@@ -44,22 +43,19 @@ void SessionManager::handleMessage(JSON message) {
     }
 }
 
-
 Session* SessionManager::createNewSession() {
     std::string new_id = generateSessionID();
     m_id_to_session[new_id] = new Session(new_id);
     return m_id_to_session[new_id];
 }
 
-
 void SessionManager::linkSIDToSessionID(std::string sid, std::string id) {
     m_sid_to_sessionid[sid] = id;
 }
 
-bool SessionManager::doesSessionIDExist(std::string id) {
+bool SessionManager::doesSessionIDExist(std::string id) const {
     return (m_id_to_session.find(id) != m_id_to_session.end());
 }
-
 
 void SessionManager::removeSID(std::string sid) {
     // If SID exists in the sessionmanager
@@ -70,7 +66,6 @@ void SessionManager::removeSID(std::string sid) {
         m_id_to_session.at(session_id)->removeSID(sid);
     }
 }
-
 
 std::string SessionManager::generateSessionID() {
     const std::string CHARACTERS = "bcdfghjklmpqrtv";

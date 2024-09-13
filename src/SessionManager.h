@@ -21,7 +21,6 @@ public:
 	void handleMessage(JSON message);
 
 private:
-
 	// Creates a new session and returns the pointer to the created Session
 	Session* createNewSession();
 
@@ -29,7 +28,7 @@ private:
 	void linkSIDToSessionID(std::string sid, std::string id);
 
 	// Returns whether a Session with the provided ID already exists
-	bool doesSessionIDExist(std::string id);
+	bool doesSessionIDExist(std::string id) const;
 
 	// Removes a socketio SID from the session the user is joined into.
 	void removeSID(std::string sid);

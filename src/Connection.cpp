@@ -1,18 +1,13 @@
 #include "Connection.h"
 
 
-Connection::Connection(Player* player, std::string sid) {
-    m_player = player;
+Connection::Connection(std::string id, std::string username, std::string sid) {
+    m_id = id;
+    m_username = username;
     m_sid = sid;
     m_state = user_connected;
-}
-
-Player* Connection::getPlayer() {
-    return m_player;
-}
-
-std::string Connection::getPlayerID() {
-    return m_player->getID();
+    m_color = "00B6FF";
+    updatePlayerAttributes();
 }
 
 int Connection::setSID(std::string sid) {
@@ -39,10 +34,6 @@ int Connection::disconnectSID() {
     }
 }
 
-std::string Connection::getUsername() {
-    return m_player->getUsername();
-}
-
 int Connection::sendMessageToUser(JSON message) {
     if (m_state == user_connected) {
         message["sid"] = m_sid;
@@ -51,12 +42,4 @@ int Connection::sendMessageToUser(JSON message) {
 
     //TODO: Add user_disconnected_case
     return 0;
-}
-
-void Connection::setTeam(std::string team) {
-    m_player->setTeam(team);
-}
-
-std::string Connection::getTeam() {
-    return m_player->getTeam();
 }

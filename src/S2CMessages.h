@@ -55,9 +55,10 @@ namespace S2CMessages {
 
     void sendJoinSessionAck(Connection* user_connection, std::string session_id);
 
+    //Not used anymore
     void sendBroadcastNewPlayer(std::list<Connection*> connections, std::string player_id, std::string username);
 
-    void sendShareLobbyInfo(std::list<Connection*> connections, std::string host_player_id, Connection* target_connection);
+    void sendSharePlayerAttributes(std::list<Connection*> connections);
 
     void sendBroadcastHostPlayer(std::list<Connection*> connections, std::string host_player_id);
 
@@ -77,6 +78,8 @@ namespace S2CMessages {
     /*-------------------------------------------*/
     /*                Draw Stage                 */
     /*-------------------------------------------*/
+    void sendSetRevealElegible(Connection* target_connection, bool eligible);
+
     void sendDealCardTargetPlayer(Connection* target_connection, Card* card);
 
     void sendDealCardOtherPlayer(std::list<Connection*> connections, std::string drawing_player_id);

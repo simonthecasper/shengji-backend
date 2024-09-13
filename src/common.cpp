@@ -114,3 +114,7 @@ time_ms common::getTime() {
 
 	return ms;
 }
+
+bool common::isProgressCard(std::string card) {
+	return (std::find(ProgressCards.begin(), ProgressCards.end(), card) == ProgressCards.end());
+}
