@@ -118,7 +118,7 @@ void S2CMessages::sendBroadcastNewPlayer(std::list<Connection*> connections, std
 void S2CMessages::sendSharePlayerAttributes(std::list<Connection*> connections) {
     JSON s2c_message = {
             { "stage", "lobby" },
-            { "task", "share_lobby_info" },
+            { "task", "share_player_attributes" },
     };
 
     s2c_message["player_attributes"] = {};
