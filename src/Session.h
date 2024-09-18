@@ -8,12 +8,13 @@
 
 #define PLAYER_ID_LENGTH	10
 
-enum SessionState { lobby, pre_game, in_game };
+enum SessionState { open, closed };
 
 class Session {
 private:
 	std::string		m_id;
 	SessionState	m_state;
+	std::mutex		m_session_mutex;
 
 	Chat* m_chatlog;
 

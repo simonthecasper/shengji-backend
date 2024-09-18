@@ -6,7 +6,7 @@ Session::Session() {
 
 Session::Session(std::string id) {
 	m_id = id;
-	m_state = lobby;
+	m_state = open;
 	m_chatlog = new Chat();
 	m_player_count = 0;
 	m_current_game = nullptr;
@@ -49,9 +49,18 @@ void Session::handleMessage(JSON message) {
 }
 
 void Session::createNewConnection(std::string sid, std::string username) {
+	m_session_mutex.lock();
+
 	// Players SID already exists in this session
 	if (sidInSession(sid)) {
 		common::print("Player is already in session");
+		m_session_mutex.unlock();
+		return;
+	}
+
+	//Lobby must be in a state to accept new players
+	if (m_state != open) {
+		m_session_mutex.unlock();
 		return;
 	}
 
@@ -68,16 +77,22 @@ void Session::createNewConnection(std::string sid, std::string username) {
 	S2CMessages::sendJoinSessionAck(new_conn, m_id);
 	S2CMessages::sendSharePlayerAttributes(m_connection_list);
 	S2CMessages::sendBroadcastHostPlayer(m_connection_list, m_host_connection->getID());
-	// S2CMessages::sendBroadcastNewPlayer(m_connection_list, player_id, username);
+
+	m_session_mutex.unlock();
 }
 
 void Session::removeSID(std::string sid) {
-	if (!sidInSession(sid)) { return; }
+	m_session_mutex.lock();
+	if (!sidInSession(sid)) {
+		m_session_mutex.unlock();
+		return;
+	}
 
 	Connection* target_conn = getConnectionFromSID(sid);
 	if (target_conn != nullptr) { target_conn->disconnectSID(); }
 
 	m_player_sids.erase(sid);
+	m_session_mutex.unlock();
 }
 
 std::string Session::generatePlayerID() {
@@ -136,6 +151,7 @@ void Session::createGame(JSON message) {
 		if (checkLobbyReadyForGame(game)) {
 			m_current_game = new ShengJi();
 			S2CMessages::sendStartPregame(m_connection_list, "shengji");
+			m_state = closed;
 		}
 	}
 
