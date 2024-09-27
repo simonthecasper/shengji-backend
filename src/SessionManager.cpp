@@ -11,7 +11,7 @@ void SessionManager::handleMessage(JSON message) {
     common::print("Received from socketio server:" + message_as_string);
 
     std::string sid = message.at("sid");
-    std::string stage = message.at("stage");
+    // std::string stage = message.contains("stage") ? message.at("stage") : "all";
     std::string task = message.at("task");
 
 

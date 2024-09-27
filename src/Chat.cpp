@@ -21,8 +21,9 @@ void Chat::handleMessage(JSON message) {
 	common::print("In Chat handler...");
 	std::string task = message.at("task");
 
-	if (common::stringCompare(task, "chat")) {
+	if (common::stringCompare(task, "send_chat")) {
 		std::string player_id = message.at("player_id");
-		addToChat(player_id, message);
+		std::string message_text = message.at("message");
+		addToChat(player_id, message_text);
 	}
 }

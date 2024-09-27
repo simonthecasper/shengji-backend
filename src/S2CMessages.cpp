@@ -63,7 +63,8 @@ void S2CMessages::runScheduledMessageLoop() {
 void S2CMessages::sendBroadcastChat(std::list<Connection*> connections, std::string player_id, std::string message) {
     for (auto const& curr_conn : connections) {
         JSON s2c_message = {
-            { "task", "chat"},
+            { "task", "broadcast_chat"},
+            { "stage", "chat"},
             { "player_id", player_id},
             { "message", message},
             { "sid", curr_conn->getSID()}

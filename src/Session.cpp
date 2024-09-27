@@ -14,11 +14,17 @@ Session::Session(std::string id) {
 
 void Session::handleMessage(JSON message) {
 	common::print("In Session handler...");
+
 	std::string stage = message.at("stage");
 	std::string task = message.at("task");
 
-	if (common::stringCompare(task, "chat")) {
+	if (common::stringCompare(task, "send_chat")) {
+
+		std::string player_id = message.at("player_id");
+		std::string chat_message = message.at("message");
+
 		m_chatlog->handleMessage(message);
+		S2CMessages::sendBroadcastChat(m_connection_list, player_id, chat_message);
 	}
 
 	else if (common::stringCompare(stage, "prelobby")) {
@@ -75,8 +81,8 @@ void Session::createNewConnection(std::string sid, std::string username) {
 
 
 	S2CMessages::sendJoinSessionAck(new_conn, m_id);
-	S2CMessages::sendSharePlayerAttributes(m_connection_list);
 	S2CMessages::sendBroadcastHostPlayer(m_connection_list, m_host_connection->getID());
+	S2CMessages::sendSharePlayerAttributes(m_connection_list);
 
 	m_session_mutex.unlock();
 }

@@ -363,17 +363,6 @@ void* SocketServer::threadFunctionAppServer(ThreadRoleEnum role) {
 			removed_json = getWorkFromQueue();
 
 			if (!common::stringCompare(removed_json.at("stage"), "empty")) {
-				// Printing
-				if (common::stringCompare(removed_json.at("stage"), "chat")) {
-					std::cout << "username:" << removed_json.at("username") << std::endl;
-					std::cout << "message:" << removed_json.at("message") << std::endl;
-					std::cout << "message thread ID" << syscall(__NR_gettid) << "\n" << std::endl;
-
-					std::string username(removed_json.at("username"));
-					std::string message_contents(removed_json.at("message"));
-					std::string testmessage = "\n" + username + ":" + message_contents;
-				}
-
 				m_session_manager->handleMessage(removed_json);
 			}
 			break;
