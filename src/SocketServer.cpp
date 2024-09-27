@@ -7,7 +7,7 @@
 SocketServer::SocketServer() {
 	std::cout << "Constructing SocketServer..." << std::endl;
 	initServer();
-	// printIP();
+	common::setStartTime();
 
 	m_session_manager = new SessionManager();
 	std::fill_n(m_fd_message_size, FD_ARRAY_SIZE, HEADER_SIZE); //initialize all sockets to expect headers
@@ -137,6 +137,7 @@ void SocketServer::pollSocketArrayAppServer() {
 
 			// Not the listening socket, an existing connection is readable
 			else {
+				common::print("An existing connection is readable.");
 				pollReceiveAndProcessMessage(fd_index);
 			}
 		} // End of loop through pollable descriptors
@@ -324,6 +325,8 @@ void SocketServer::initThreadsAppServer() {
 		m_thread_role_array[i].server = this;
 		if (i == 0)
 			m_thread_role_array[i].role = listen_incoming_data;
+		else if (i == 1)
+			m_thread_role_array[i].role = send_scheduled_messages;
 		else
 			m_thread_role_array[i].role = work;
 
@@ -347,24 +350,19 @@ void* SocketServer::threadFunctionAppServer(ThreadRoleEnum role) {
 	while (true) {
 		switch (role) {
 		case listen_incoming_data:
+			common::print("Listen thread is listening...");
 			pollSocketArrayAppServer();
+			break;
+
+		case send_scheduled_messages:
+			common::print("Sending scheduled messages...");
+			S2CMessages::runScheduledMessageLoop();
 			break;
 
 		case work:
 			removed_json = getWorkFromQueue();
 
 			if (!common::stringCompare(removed_json.at("stage"), "empty")) {
-				// Printing
-				if (common::stringCompare(removed_json.at("stage"), "chat")) {
-					std::cout << "username:" << removed_json.at("username") << std::endl;
-					std::cout << "message:" << removed_json.at("message") << std::endl;
-					std::cout << "message thread ID" << syscall(__NR_gettid) << "\n" << std::endl;
-
-					std::string username(removed_json.at("username"));
-					std::string message_contents(removed_json.at("message"));
-					std::string testmessage = "\n" + username + ":" + message_contents;
-				}
-
 				m_session_manager->handleMessage(removed_json);
 			}
 			break;
@@ -375,6 +373,7 @@ void* SocketServer::threadFunctionAppServer(ThreadRoleEnum role) {
 
 int SocketServer::addToQueue(JSON task) {
 	m_queue_control_mutex.lock();
+	common::print("Adding to work queue");
 	m_work_queue.push(task);
 	m_queue_control_mutex.unlock();
 	return 0;

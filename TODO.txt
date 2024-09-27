@@ -2,14 +2,13 @@ Shengji-Backend
 
 
 TODO:
-[] Implement S2CMessages functions
-
-[] Implement Game object functions
+[] Create Game object draw phase functions
 
 [] Standardize messaging vocabulary
 
-[] Make general message handler that redirects to the correct specific handler (eg. chat, game, etc)
--- Make specific message handlers
+[Simon] Make general message handler that redirects to the correct specific handler (eg. chat, game, etc)
+
+[] Create JSON field name checker function and info file
 
 
 Completed:
@@ -17,3 +16,4 @@ Completed:
 [X] Created Game object header
 [X] Created S2CMessages Namespace
 [X] Created S2CMessages Header
+[X] Implement S2CMessages functions

@@ -9,12 +9,21 @@ Chat::Chat() {
 int Chat::addToChat(std::string player_id, std::string message) {
 	m_mutex_chatlog.lock();
 
-	JSON message_json;
-	message_json["player_id"] = player_id;
-	message_json["message"] = message;
-
-	m_chatlog.push_back(message_json);
+	std::pair<std::string, std::string> entry = std::make_pair(player_id, message);
+	m_chatlog.push_back(entry);
 
 	m_mutex_chatlog.unlock();
 	return 0;
+}
+
+
+void Chat::handleMessage(JSON message) {
+	common::print("In Chat handler...");
+	std::string task = message.at("task");
+
+	if (common::stringCompare(task, "send_chat")) {
+		std::string player_id = message.at("player_id");
+		std::string message_text = message.at("message");
+		addToChat(player_id, message_text);
+	}
 }

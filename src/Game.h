@@ -1,68 +1,26 @@
 #pragma once
 
 #include "Deck.h"
-#include "Player.h"
+#include "Connection.h"
+#include "S2CMessages.h"
 
 class Game {
-private:
-
-    std::unordered_set<std::string>	m_player_sids;
-    std::list<Player*>          m_player_order;
+protected:
+    std::list<Connection*>      m_connection_list;
     Deck                        m_deck;
-
-    std::string         m_strong_suit;
-    std::string         m_strong_value;
-
-    Player* m_lord_player;
-    Player* m_trick_starter;
-    Player* m_expected_player;
-    std::list<Player*>::iterator m_expected_player_itr;
-
-    Player* m_winning_player;
-    Play                m_winning_play;
-
-    std::list<Card*>    m_all_scored_cards;
-    int                 m_scored_points;
-
-    std::list<Card*>    m_scored_cards_this_trick;
 
 public:
     Game();
 
     // General message handler that routes to the correct handler
     // for the task 
-    void handleMessage(JSON message);
+    virtual void handleMessage(JSON message) {};
 
-private:
-    // Receives a play from the expected player and updates the game state accordingly
-    void processExpectedPlay(JSON message);
+protected:
+    virtual void createDeck(int player_count, int deck_count) {};
 
-    // Returns true if the incoming message is from the current expected player
-    // Returns false if the incoming message is from a different player
-    bool verifyIncomingMessageIsFromExpectedPlayer(JSON message);
+    // Updates a players team assignment and notifies all players in the lobby of this change
+    virtual void updatePlayerTeam(std::string player_id, std::string team) {};
 
-    // Deals a card to the given player
-    void dealCardToPlayer(Player* target_player);
-
-    // Notifies all other players that a player has received a new card
-    void notifyOtherPlayersOfCardDeal(Player* dealt_player);
-
-    // Sets lord_player and informs all players in the session of this change
-    void setLordPlayer(Player* lord_player);
-
-    // Sets trick starter player and informs all players in the session of this change
-    void setTrickStarterPlayer(Player* trick_starter);
-
-    // Moves the expected player to the next player in the ordering
-    void incrementExpectedPlayer();
-
-    // Sets the expected player and informs all players in the session of this change
-    void setExpectedPlayer(Player* expected_player);
-
-    // Sets the winning player and informs all players in the session of this change
-    void setWinningPlayer(Player* winning_player);
-
-    // Sets strong suit for the game and informs all players in the session of this change
-    void setStrongSuit(std::string strong_suit);
-
+    Connection* getConnectionFromPlayerID(std::string player_id);
 };

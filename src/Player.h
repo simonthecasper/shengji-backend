@@ -2,49 +2,33 @@
 #include <set>
 #include "Play.h"
 
+
 class Player
 {
-private:
-	std::string 	m_id;
-	std::string 	m_name;
-	std::string		m_sid;
-
-	bool 			m_scoring;
-	std::string 	m_team;
-
-	std::set<Card*> 		m_hand;
-
 public:
+	std::string 	m_id;
+	std::string 	m_username;
+	std::string 	m_color;
+
+	std::set<Card*> 	m_hand;
+
+	std::string 	m_team;
+	std::string		m_progress_card;
+	bool			m_reveal_eligible;
+
+	JSON			m_player_attributes;
+
 	Player();
 
 	Player(std::string id);
 
-	Player(std::string id, std::string name);
-
-
-	// Changes scoring status of player
-	void toggleScoring();
-
-	// Sets the players SID to the provided value
-	void setSID(std::string sid);
-
-	// Returns the players SID
-	std::string getSID();
+	Player(std::string id, std::string username);
 
 	// Returns the name of the player
-	std::string getName() const;
+	std::string getUsername() const;
 
 	// Returns the assigned ID of the player
 	std::string getID() const;
-
-	// Returns whether this player is scoring or not
-	bool isScoring() const;
-
-	// Sets the player to the provided team
-	void setTeam(std::string team);
-
-	// Returns the team of the player
-	std::string getTeam() const;
 
 	// Given a suit, rank, and id, returns whether this player has this card in
 	//	their hand
@@ -66,7 +50,35 @@ public:
 	//Returns the size of the players hand
 	int getHandSize() const;
 
-	//WIP: creates a play based on the received input from the client
-	//Play makePlay();
+	// Sets the team of the player
+	void setTeam(std::string team);
+
+	// Returns the team of the player
+	std::string getTeam();
+
+	// Sets the preferred color of this player
+	void setColor(std::string color);
+
+	// Returns the preferred color of the player
+	std::string getColor() const;
+
+	// Sets the reveal elegibility of the player
+	void setRevealElegibility(bool elegible);
+
+	// Toggles and returns the reveal elegibility of this player
+	bool toggleRevealEligibility();
+
+	// Returns the reveal eligibility of this player
+	bool getRevealElegibility();
+
+	void setProgressCard(std::string card_value);
+
+	std::string incrementProgressCard();
+
+
+	JSON getPlayerAttributes() const;
+
+protected:
+	void updatePlayerAttributes();
 
 };

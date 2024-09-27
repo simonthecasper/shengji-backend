@@ -1,103 +1,87 @@
 #include "SessionManager.h"
 
 
+SessionManager::SessionManager() {
+
+}
+
 void SessionManager::handleMessage(JSON message) {
+    common::print("In SessionManager handler...");
     std::string message_as_string = message.dump();
     common::print("Received from socketio server:" + message_as_string);
 
     std::string sid = message.at("sid");
-    JSON response;
-    response["sid"] = sid;
+    // std::string stage = message.contains("stage") ? message.at("stage") : "all";
+    std::string task = message.at("task");
 
-    std::string stage = message.at("stage");
-    if (common::stringCompare(stage, "prelobby")) {
-        std::string task = message.at("task");
 
-        if (common::stringCompare(task, "new_session")) {
-            Session* new_session = createNewSession();
-            std::string session_id = new_session->getID();
-            std::string source_sid = message.at("sid");
-            std::string player_id = addPlayerToSessionSID(session_id, source_sid);
-            linkSIDToSessionID(source_sid, session_id);
+    if (common::stringCompare(task, "new_session")) {
+        common::print("Creating new session...");
+        Session* new_session = createNewSession();
+        std::string session_id = new_session->getID();
 
-            response["session_id"] = session_id;
-            response["player_id"] = player_id;
+        new_session->handleMessage(message);
+    }
 
-            common::sendThroughSocketSID(response);
+    else if (common::stringCompare(task, "join_session")) {
+        std::string session_id = message.at("session_id");
+
+        if (doesSessionIDExist(session_id)) {
+            linkSIDToSessionID(sid, session_id);
+            Session* target_session = m_id_to_session.at(session_id);
+            target_session->handleMessage(message);
         }
-        else if (common::stringCompare(task, "join_session")) {
-            std::string session_id = message.at("session_id");
-            std::string source_sid = message.at("sid");
-            std::string player_id = addPlayerToSessionSID(session_id, source_sid);
-
-            if (!ifSessionIDExists(session_id)) {
-                common::print("Session ID not found: " + session_id);
-                return;
-            }
-
-            linkSIDToSessionID(source_sid, session_id);
-
-            response["session_id"] = session_id;
-            response["player_id"] = player_id;
-            common::sendThroughSocketSID(response);
+        else {
+            S2CMessages::sendJoinSessionNotFound(sid);
         }
     }
 
-    if (stage == "chat") {
+    else {
         std::string session_id = message.at("session_id");
         Session* target_session = m_id_to_session.at(session_id);
-        target_session->addToChat(message);
-    }
-}
-
-void SessionManager::removeSID(std::string sid) {
-    // If socket exists in the sessionmanager
-    if (m_sid_to_sessionid.count(sid)) {
-        std::string session_id = m_sid_to_sessionid.at(sid);
-
-        //make new function in session that uses sid
-        m_id_to_session.at(session_id)->removePlayerSID(sid);
+        target_session->handleMessage(message);
     }
 }
 
 Session* SessionManager::createNewSession() {
-    std::string new_id;
-    do {
-        new_id = generateSessionID();
-    } while (ifSessionIDExists(new_id));
-
+    std::string new_id = generateSessionID();
     m_id_to_session[new_id] = new Session(new_id);
     return m_id_to_session[new_id];
-}
-
-std::string SessionManager::addPlayerToSessionSID(std::string session_id, std::string sid) {
-    Session* target_session = m_id_to_session[session_id];
-    std::string player_id = target_session->addPlayerSID(sid);
-    return player_id;
 }
 
 void SessionManager::linkSIDToSessionID(std::string sid, std::string id) {
     m_sid_to_sessionid[sid] = id;
 }
 
-bool SessionManager::ifSessionIDExists(std::string id) {
-    if (m_id_to_session.find(id) == m_id_to_session.end())
-        return false;
-    return true;
+bool SessionManager::doesSessionIDExist(std::string id) const {
+    return (m_id_to_session.find(id) != m_id_to_session.end());
+}
+
+void SessionManager::removeSID(std::string sid) {
+    // If SID exists in the sessionmanager
+    if (m_sid_to_sessionid.count(sid)) {
+        std::string session_id = m_sid_to_sessionid.at(sid);
+
+        //make new function in session that uses sid
+        m_id_to_session.at(session_id)->removeSID(sid);
+    }
 }
 
 std::string SessionManager::generateSessionID() {
-    const std::string CHARACTERS = "abcdefghijklmnopqrstuv";
+    const std::string CHARACTERS = "bcdfghjklmpqrtv";
 
     std::random_device rd;
     std::mt19937 generator(rd());
     std::uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
 
-    std::string random_string = "s";
-    for (int i = 0; i < ID_LENGTH - 1; ++i) {
-        random_string
-            += CHARACTERS[distribution(generator)];
-    }
 
+    std::string random_string = "s";
+
+    do {
+        for (int i = 0; i < ID_LENGTH - 1; ++i) {
+            random_string
+                += CHARACTERS[distribution(generator)];
+        }
+    } while (doesSessionIDExist(random_string));
     return random_string;
 }

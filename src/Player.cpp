@@ -11,51 +11,23 @@ Player::Player(std::string id) {
 }
 
 
-Player::Player(std::string id, std::string name) {
+Player::Player(std::string id, std::string username) {
 	m_id = id;
-	m_name = name;
-	//m_scoring = scoring;
+	m_username = username;
+	m_team = "Unset";
 }
 
-void Player::toggleScoring() {
-	m_scoring = !m_scoring;
-}
-
-
-void Player::setSID(std::string sid) {
-	m_sid = sid;
-}
-
-
-std::string Player::getSID() {
-	return m_sid;
-}
-
-
-std::string Player::getName() const {
-	return m_name;
+std::string Player::getUsername() const {
+	return m_username;
 }
 
 std::string Player::getID() const {
 	return m_id;
 }
 
-bool Player::isScoring() const {
-	return m_scoring;
-}
-
-void Player::setTeam(std::string team) {
-	m_team = team;
-}
-
-std::string Player::getTeam() const {
-	return m_team;
-}
-
 void Player::addCardToHand(Card* card) {
 	m_hand.insert(card);
 }
-
 
 bool Player::ifHasCard(std::string suit, int rank, int id) {
 	std::set<Card*>::iterator itr;
@@ -71,25 +43,77 @@ bool Player::ifHasCard(std::string suit, int rank, int id) {
 	return false;
 }
 
-
 bool Player::ifHasCard(Card* card) {
 	return m_hand.find(card) != m_hand.end();
 }
-
-
-//Card* Player::pickCard(Card* card) {
-//	
-//}
-
-
-
 
 std::set<Card*> Player::getHand() const {
 	return m_hand;
 }
 
-
 int Player::getHandSize() const {
 	return m_hand.size();
 }
 
+void Player::setTeam(std::string team) {
+	m_team = team;
+}
+
+std::string Player::getTeam() {
+	return m_team;
+}
+
+void Player::setColor(std::string color) {
+	m_color = color;
+	updatePlayerAttributes();
+}
+
+std::string Player::getColor() const {
+	return m_color;
+}
+
+void Player::setRevealElegibility(bool elegible) {
+	m_reveal_eligible = elegible;
+}
+
+bool Player::toggleRevealEligibility() {
+	m_reveal_eligible = !m_reveal_eligible;
+	return m_reveal_eligible;
+}
+
+bool Player::getRevealElegibility() {
+	return m_reveal_eligible;
+}
+
+void Player::setProgressCard(std::string card_value) {
+	if (!common::isProgressCard(card_value)) {
+		std::cout << "The provided card is not a Progress Card" << std::endl;
+		return;
+	}
+
+	m_progress_card = card_value;
+}
+
+std::string Player::incrementProgressCard() {
+	std::vector<std::string>::iterator itr = std::find(common::ProgressCards.begin(), common::ProgressCards.end(), m_progress_card);
+	if (itr++ != common::ProgressCards.end()) {
+		m_progress_card = *itr;
+	}
+	else {
+		m_progress_card = "Finished";
+	}
+
+	return m_progress_card;
+}
+
+
+void Player::updatePlayerAttributes() {
+	m_player_attributes = {
+		{"username", m_username},
+		{"color", m_color}
+	};
+}
+
+JSON Player::getPlayerAttributes() const {
+	return m_player_attributes;
+}

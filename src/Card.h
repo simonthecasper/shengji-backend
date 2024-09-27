@@ -19,11 +19,11 @@ private:
 
 public:
 
-    int testfield;
-
     Card();
 
-    Card(std::string suit_con, int rank_con, int id);
+    Card(std::string suit, int rank, int id);
+
+    Card(std::string suit, std::string value, int rank, int id);
 
     //Returns the suit of the card as a std::string
     std::string getSuit() const;
